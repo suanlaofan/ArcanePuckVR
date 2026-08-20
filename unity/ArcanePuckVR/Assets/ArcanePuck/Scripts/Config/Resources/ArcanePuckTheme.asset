@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b99932919d21f49f6aad6b7d4093a9c0, type: 3}
+  m_Name: ArcanePuckTheme
+  m_EditorClassIdentifier: ArcanePuck.Runtime::ArcanePuck.ThemeConfig
+  TABLE_MODEL: {fileID: 8800838498505712525, guid: 1a9de2a643a41432292c81293c815b70, type: 3}
+  MALLET_MODEL: {fileID: 0}
+  PLAYER_MALLET_MODEL: {fileID: 841663929847176033, guid: 7a82ab7e209da495394b4a58ee78ff93, type: 3}
+  AI_MALLET_MODEL: {fileID: 8450757843017368810, guid: a54be58e83fd24a9482f7e51c11e60da, type: 3}
+  PUCK_MODEL: {fileID: 6352854323819164004, guid: 15dcbe54f68444405bc99d7caa426960, type: 3}
+  GOAL_MODEL: {fileID: 0}
+  ARENA_MODEL: {fileID: 0}
+  AI_OPPONENT_MODEL: {fileID: 0}
+  VFX_THEME: {fileID: 0}
+  SFX_THEME: {fileID: 0}
+  UI_CLICK_SFX: {fileID: 8300000, guid: 25b4b975dcba14f73a9c2d09fa139d0c, type: 3}
+  SERVE_SFX: {fileID: 8300000, guid: 2286df013de274c8aa4cff6fc7aaf5f0, type: 3}
+  HIT_LIGHT_SFX: {fileID: 8300000, guid: 2f3479d7d37dc40f5ba0f687a3c6b412, type: 3}
+  HIT_NORMAL_SFX: {fileID: 8300000, guid: 1b7ca9113dbc9401cbc31e160fd0c294, type: 3}
+  HIT_POWER_SFX: {fileID: 8300000, guid: 958bb1d8ce8fe416fb292f93b99d3e92, type: 3}
+  RAIL_BOUNCE_SFX: {fileID: 8300000, guid: 7c81cde50df0246f198372970c5a0713, type: 3}
+  PLAYER_SCORE_SFX: {fileID: 8300000, guid: 91f37095994044437b2a56ea27ba8996, type: 3}
+  AI_SCORE_SFX: {fileID: 8300000, guid: 51f51dd4dd25c4fe2ad800a9779a4e17, type: 3}
+  VICTORY_SFX: {fileID: 8300000, guid: 33f7c4700fe8c4f8387ffd768943d714, type: 3}
+  DEFEAT_SFX: {fileID: 8300000, guid: c75908eb49736451599fa742df610e8c, type: 3}
+  wood: {r: 0.208, g: 0.114, b: 0.086, a: 1}
+  woodWarm: {r: 0.439, g: 0.255, b: 0.149, a: 1}
+  woodLight: {r: 0.651, g: 0.416, b: 0.212, a: 1}
+  metal: {r: 0.2, g: 0.251, b: 0.302, a: 1}
+  gold: {r: 0.902, g: 0.741, b: 0.384, a: 1}
+  cyan: {r: 0.275, g: 0.91, b: 1, a: 1}
+  violet: {r: 0.647, g: 0.475, b: 1, a: 1}
+  ember: {r: 1, g: 0.678, b: 0.353, a: 1}
+  enemyRed: {r: 0.65, g: 0.08, b: 0.12, a: 1}
+  hallStone: {r: 0.09, g: 0.13, b: 0.19, a: 1}
+  floorStone: {r: 0.063, g: 0.082, b: 0.125, a: 1}

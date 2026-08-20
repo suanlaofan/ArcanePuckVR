@@ -1,0 +1,64 @@
+# Node.js dependencies and local tooling
+node_modules/
+.npm/
+.pnpm-store/
+.yarn/
+.vite/
+*.tsbuildinfo
+
+# Frontend build output
+dist/
+coverage/
+
+# Unity generated project data
+**/[Ll]ibrary/
+**/[Tt]emp/
+**/[Oo]bj/
+**/[Ll]ogs/
+**/[Uu]ser[Ss]ettings/
+**/[Bb]uild/
+**/[Bb]uilds/
+**/[Mm]emoryCaptures/
+**/[Uu]nity[Ll]ockfile
+**/[Uu]nity[Ll]ockfile-
+**/*.csproj
+**/*.sln
+**/*.slnx
+**/*.userprefs
+**/*.pidb
+**/*.booproj
+**/*.svd
+**/*.pdb
+**/*.mdb
+**/*.opendb
+**/*.VC.db
+**/.vs/
+
+# Local investigation/build artifacts
+work/
+**/work/
+BuildReports/
+*.log
+*.pid
+
+# IDE metadata
+.idea/
+.vscode/
+*.swp
+*.swo
+*.iml
+
+# macOS and Windows metadata
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Local environment/secrets
+.env
+.env.*
+!.env.example
