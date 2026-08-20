@@ -21,6 +21,9 @@ coverage/
 **/[Mm]emoryCaptures/
 **/[Uu]nity[Ll]ockfile
 **/[Uu]nity[Ll]ockfile-
+**/.utmp/
+**/.gradle/
+**/DerivedDataCache/
 **/*.csproj
 **/*.sln
 **/*.slnx
