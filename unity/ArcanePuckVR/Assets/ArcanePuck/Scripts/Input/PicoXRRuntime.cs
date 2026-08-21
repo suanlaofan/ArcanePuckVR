@@ -18,7 +18,12 @@ namespace ArcanePuck
             }
 
             var origin = new GameObject("PICO XR Origin");
-            origin.transform.position = new Vector3(0f, 0f, -2.35f);
+            // Emulator/headset tracking is applied to the child HMD camera. Keep
+            // the authored comfort pose on its parent: farther back from the
+            // player's table edge and pitched down toward the play surface.
+            origin.transform.SetPositionAndRotation(
+                new Vector3(0f, 0f, -4.4f),
+                Quaternion.Euler(12f, 0f, 0f));
             origin.AddComponent<PXR_Manager>();
             var offset = new GameObject("Camera Offset").transform;
             offset.SetParent(origin.transform, false);

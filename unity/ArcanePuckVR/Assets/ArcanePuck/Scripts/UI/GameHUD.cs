@@ -125,11 +125,16 @@ namespace ArcanePuck
             {
                 var rect = canvas.GetComponent<RectTransform>();
                 rect.sizeDelta = new Vector2(1000f, 620f);
-                rect.localScale = Vector3.one * 0.0012f;
+                // PICO compositor presents the Canvas back side in the
+                // emulator. Flip the panel 180 degrees around its local Z axis
+                // so the Chinese UI reads upright, then double its physical
+                // size for comfortable headset legibility.
+                rect.localScale = Vector3.one * 0.0024f;
                 rect.position = Camera.main.transform.position + Camera.main.transform.forward * 1.45f + Vector3.down * 0.12f;
                 // A world-space Canvas renders from its local forward side; aim that
                 // side back toward the viewer instead of away into the arena.
-                rect.rotation = Quaternion.LookRotation(Camera.main.transform.position - rect.position, Vector3.up);
+                rect.rotation = Quaternion.LookRotation(Camera.main.transform.position - rect.position, Vector3.up)
+                                * Quaternion.Euler(0f, 0f, 180f);
                 canvas.worldCamera = Camera.main;
                 scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
             }
