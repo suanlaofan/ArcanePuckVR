@@ -38,6 +38,7 @@ namespace ArcanePuck.Editor
             PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.Android, false);
             PlayerSettings.SetGraphicsAPIs(BuildTarget.Android, new[] { UnityEngine.Rendering.GraphicsDeviceType.Vulkan });
 
+            ArcanePuckLauncherIconSetup.ApplyAndroidIcons();
             ConfigurePicoLoader();
             ConfigurePicoSettings();
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };

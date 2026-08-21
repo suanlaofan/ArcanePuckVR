@@ -261,7 +261,7 @@ namespace ArcanePuck
             statusText = rules.Snapshot.Phase == MatchPhase.Serving
                 ? "准备发球"
                 : PicoXRRuntime.IsRunning
-                    ? "移动主手球槌，按住扳机蓄力"
+                    ? "手柄优先控制球槌；未追踪时鼠标移动、左键蓄力"
                     : "鼠标移动击槌，按住左键蓄力";
             hud?.ShowPlaying();
             PublishState();

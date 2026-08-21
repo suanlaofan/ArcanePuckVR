@@ -21,6 +21,10 @@ namespace ArcanePuck
     /// </summary>
     public sealed class GameHUD : MonoBehaviour
     {
+        // Keep the PICO HUD comfortably inside the view without attaching it to
+        // the game table. The Canvas remains a camera child, so the HMD's
+        // UpdateAndBeforeRender tracking update carries it with the user's head.
+        private static readonly Vector3 PicoHeadLockedOffset = new(0f, -0.32f, 1.85f);
         private static readonly Color FallbackGold = new(0.902f, 0.741f, 0.384f);
         private static readonly Color FallbackCyan = new(0.275f, 0.91f, 1f);
         private static readonly Color FallbackViolet = new(0.647f, 0.475f, 1f);
@@ -125,16 +129,16 @@ namespace ArcanePuck
             {
                 var rect = canvas.GetComponent<RectTransform>();
                 rect.sizeDelta = new Vector2(1000f, 620f);
-                // PICO compositor presents the Canvas back side in the
-                // emulator. Flip the panel 180 degrees around its local Z axis
-                // so the Chinese UI reads upright, then double its physical
-                // size for comfortable headset legibility.
+                // The PICO compositor displays this canvas from its back side.
+                // The previous world-space pose was LookRotation(back) followed
+                // by a local Y-axis 180 degree correction, whose resulting
+                // orientation matches the HMD. Parent the canvas directly to the
+                // tracked camera to preserve that correction while making the UI
+                // genuinely head-locked (including before-render pose updates).
+                rect.SetParent(Camera.main.transform, false);
                 rect.localScale = Vector3.one * 0.0024f;
-                rect.position = Camera.main.transform.position + Camera.main.transform.forward * 1.45f + Vector3.down * 0.12f;
-                // A world-space Canvas renders from its local forward side; aim that
-                // side back toward the viewer instead of away into the arena.
-                rect.rotation = Quaternion.LookRotation(Camera.main.transform.position - rect.position, Vector3.up)
-                                * Quaternion.Euler(0f, 0f, 180f);
+                rect.localPosition = PicoHeadLockedOffset;
+                rect.localRotation = Quaternion.identity;
                 canvas.worldCamera = Camera.main;
                 scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
             }
