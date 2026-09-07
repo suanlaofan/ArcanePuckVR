@@ -8,7 +8,34 @@ namespace ArcanePuck
     public static class PicoXRRuntime
     {
         // The PICO loader is configured for Android only. Desktop keeps its existing controls.
-        public static bool IsRunning => Application.platform == RuntimePlatform.Android && XRSettings.enabled;
+        public static bool IsRunning => IsEditorPreview ||
+            (Application.platform == RuntimePlatform.Android && XRSettings.enabled);
+
+        public static bool IsEditorPreview
+        {
+            get
+            {
+#if UNITY_EDITOR
+                return EditorPreviewEnabled;
+#else
+                return false;
+#endif
+            }
+        }
+
+#if UNITY_EDITOR
+        public static bool EditorPreviewEnabled
+        {
+            get => UnityEditor.SessionState.GetBool("ArcanePuck.VR.EditorPreview", false);
+            set => UnityEditor.SessionState.SetBool("ArcanePuck.VR.EditorPreview", value);
+        }
+        public static Vector3 EditorControllerPosition { get; set; } = new(0.25f, 1.20f, 0.35f);
+        public static bool EditorControllerTracked { get; set; } = true;
+#endif
+
+        public static VRControlConfig Controls { get; private set; }
+        public static PicoPlayerCalibration Calibration { get; private set; }
+        public static Transform TrackingSpace { get; private set; }
 
         private static bool isEmulator;
         private static bool isEmulatorResolved;
@@ -48,7 +75,22 @@ namespace ArcanePuck
             }
         }
 
-        public static Camera CreateCamera(TableConfig config)
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetRuntimeState()
+        {
+            Controls = null;
+            Calibration = null;
+            TrackingSpace = null;
+            isEmulator = false;
+            isEmulatorResolved = false;
+            nextEmulatorProbeTime = 0f;
+#if UNITY_EDITOR
+            EditorControllerPosition = new Vector3(0.25f, 1.20f, 0.35f);
+            EditorControllerTracked = true;
+#endif
+        }
+
+        public static Camera CreateCamera(TableConfig config, Transform tableRoot = null)
         {
             foreach (var existing in UnityEngine.Object.FindObjectsByType<Camera>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
@@ -56,29 +98,45 @@ namespace ArcanePuck
             }
 
             var origin = new GameObject("PICO XR Origin");
-            // Emulator/headset tracking is applied to the child HMD camera. Keep
-            // the authored comfort pose on its parent: farther back from the
-            // player's table edge and pitched down toward the play surface.
-            origin.transform.SetPositionAndRotation(
-                new Vector3(0f, 0f, -4.4f),
-                Quaternion.Euler(12f, 0f, 0f));
-            origin.AddComponent<PXR_Manager>();
-            var offset = new GameObject("Camera Offset").transform;
+            Controls = VRControlConfig.LoadRuntime();
+            // This is only a loading pose. Calibration positions the actual HMD
+            // after its first valid tracking sample and never adds artificial pitch.
+            var nearEdge = tableRoot != null
+                ? tableRoot.TransformPoint(new Vector3(0f, 0f, -config.HalfLength))
+                : new Vector3(0f, 0f, -config.HalfLength);
+            var forward = Vector3.ProjectOnPlane(tableRoot != null ? tableRoot.forward : Vector3.forward, Vector3.up).normalized;
+            if (forward.sqrMagnitude < 0.001f) forward = Vector3.forward;
+            var loadingPosition = nearEdge - forward * Controls.StartDistance;
+            loadingPosition.y = 0f;
+            origin.transform.SetPositionAndRotation(loadingPosition, Quaternion.LookRotation(forward, Vector3.up));
+            if (!IsEditorPreview) origin.AddComponent<PXR_Manager>();
+            var offset = new GameObject("Shared Tracking Space").transform;
             offset.SetParent(origin.transform, false);
-            // Keep the default eye height a little lower so the near half of
-            // the table remains in the comfortable initial framing.
-            offset.localPosition = new Vector3(0f, 1.45f, 0f);
+            TrackingSpace = offset;
 
-            var cameraObject = new GameObject("PICO HMD Camera", typeof(Camera), typeof(AudioListener), typeof(TrackedPoseDriver));
+            var cameraObject = new GameObject("PICO HMD Camera", typeof(Camera), typeof(AudioListener));
             cameraObject.tag = "MainCamera";
             cameraObject.transform.SetParent(offset, false);
             var camera = cameraObject.GetComponent<Camera>();
             camera.nearClipPlane = 0.05f;
             camera.farClipPlane = 70f;
-            var driver = cameraObject.GetComponent<TrackedPoseDriver>();
-            driver.SetPoseSource(TrackedPoseDriver.DeviceType.GenericXRDevice, TrackedPoseDriver.TrackedPose.Center);
-            driver.trackingType = TrackedPoseDriver.TrackingType.RotationAndPosition;
-            driver.updateType = TrackedPoseDriver.UpdateType.UpdateAndBeforeRender;
+            if (IsEditorPreview)
+            {
+                // The head itself is tilted for visual inspection; the XR origin
+                // remains upright just as it does with a real tracked headset.
+                cameraObject.transform.localPosition = new Vector3(0f, 1.65f, 0f);
+                cameraObject.transform.localRotation = Quaternion.Euler(30f, 0f, 0f);
+                camera.fieldOfView = 80f;
+            }
+            else
+            {
+                var driver = cameraObject.AddComponent<TrackedPoseDriver>();
+                driver.SetPoseSource(TrackedPoseDriver.DeviceType.GenericXRDevice, TrackedPoseDriver.TrackedPose.Center);
+                driver.trackingType = TrackedPoseDriver.TrackingType.RotationAndPosition;
+                driver.updateType = TrackedPoseDriver.UpdateType.UpdateAndBeforeRender;
+            }
+            Calibration = origin.AddComponent<PicoPlayerCalibration>();
+            Calibration.Initialize(config, Controls, tableRoot, offset, camera);
             return camera;
         }
     }

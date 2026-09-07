@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -16,6 +17,22 @@ namespace ArcanePuck
     public sealed class PicoMalletInput : MonoBehaviour, IMalletInput
     {
         private TableConfig config;
+        private VRControlConfig controls;
+        private readonly VRMalletMapping mapping = new();
+        private bool hasUsableTracking;
+        private bool trackingPauseRequested;
+        private bool hasPoseSample;
+        private Vector3 lastPoseSample;
+        private float lastPoseTime;
+        private float stableSince = -1f;
+        private float missingSince = -1f;
+        private bool suppressChargeUntilRelease;
+        private Vector2 menuNavigation;
+        private float nextMenuNavigationTime;
+        public event Action ContinuityReset;
+        public bool HasUsableTracking => hasUsableTracking;
+        private const float TrackingStableSeconds = 0.12f;
+        private const float TrackingPauseSeconds = 0.5f;
         private Camera observationCamera;
         private Transform tableSpace;
         private Transform trackingOrigin;
@@ -72,7 +89,11 @@ namespace ArcanePuck
             config = tableConfig;
             observationCamera = camera;
             tableSpace = playSpace;
-            trackingOrigin = camera != null ? camera.transform.root : null;
+            trackingOrigin = PicoXRRuntime.TrackingSpace != null
+                ? PicoXRRuntime.TrackingSpace : camera != null ? camera.transform.parent : null;
+            controls = PicoXRRuntime.Controls;
+            if (controls != null) controls.Changed += OnControlsChanged;
+            if (PicoXRRuntime.Calibration != null) PicoXRRuntime.Calibration.Recentered += OnRecentered;
             RebuildTablePlane();
             ResetInput();
         }
@@ -107,7 +128,8 @@ namespace ArcanePuck
                 UpdateControllerShortcuts(sourceChanged);
             }
 
-            if (!inputEnabled) return;
+            UpdateTrackingAvailability(source, hasTrackedController, controllerPosition, sourceChanged);
+            if (!inputEnabled || !hasUsableTracking) return;
 
             if (source == InputSource.TrackedController && hasTrackedController)
             {
@@ -167,44 +189,143 @@ namespace ArcanePuck
             inputEnabled = enabled;
             if (!enabled)
             {
-                CancelCharge();
+                Recalibrate();
             }
         }
 
         public void ResetInput()
         {
-            target = config == null ? new Vector3(0f, 0f, -1f) : new Vector3(0f, 0f, -config.length * 0.28f);
-            CancelCharge();
+            target = config == null ? new Vector3(0f, 0f, -1f) : VRMalletMapping.Center(config);
+            Recalibrate();
             startRequested = false;
             pauseRequested = false;
-            activeSource = InputSource.None;
-            activeControllerHand = InputDeviceCharacteristics.None;
-            controller = default;
-            primaryWasPressed = false;
-            secondaryWasPressed = false;
-            triggerWasPressed = false;
+            menuNavigation = Vector2.zero;
+            trackingPauseRequested = false;
+            missingSince = -1f;
+        }
+
+        public void Recalibrate(bool center = false)
+        {
+            if (center && config != null) target = VRMalletMapping.Center(config);
+            mapping.Clear();
             hasEmulatorPoseAnchor = false;
-            hasMousePositionSample = false;
-            mouseSampleFrames = 0;
-            lastMousePosition = default;
-            emulatorMouseObserved = false;
-            mouseActivityUntil = 0f;
+            if (hasUsableTracking && hasPoseSample && activeSource == InputSource.TrackedController)
+            {
+                if (PicoXRRuntime.IsEmulator)
+                {
+                    emulatorPoseAnchor = lastPoseSample;
+                    emulatorTargetAnchor = target;
+                    hasEmulatorPoseAnchor = true;
+                }
+                else
+                {
+                    var world = trackingOrigin != null ? trackingOrigin.TransformPoint(lastPoseSample) : lastPoseSample;
+                    mapping.Anchor(config.ToTablePosition(tableSpace, world), target);
+                }
+            }
+            CancelCharge();
+            suppressChargeUntilRelease = true;
+            ContinuityReset?.Invoke();
+        }
+
+        public bool ConsumeTrackingPauseRequest()
+        {
+            var requested = trackingPauseRequested;
+            trackingPauseRequested = false;
+            return requested;
+        }
+
+        public Vector2 ConsumeMenuNavigation()
+        {
+            var navigation = menuNavigation;
+            menuNavigation = Vector2.zero;
+            return navigation;
+        }
+
+        private void OnControlsChanged() => Recalibrate();
+        private void OnRecentered()
+        {
+            hasPoseSample = false;
+            stableSince = -1f;
+            Recalibrate();
+        }
+
+        private void OnDestroy()
+        {
+            if (controls != null) controls.Changed -= OnControlsChanged;
+            if (PicoXRRuntime.Calibration != null) PicoXRRuntime.Calibration.Recentered -= OnRecentered;
+        }
+
+        private void UpdateTrackingAvailability(InputSource source, bool tracked, Vector3 pose, bool sourceChanged)
+        {
+            var now = Time.unscaledTime;
+            var usable = source == InputSource.Mouse && Mouse.current != null &&
+                         (!PicoXRRuntime.IsRunning || PicoXRRuntime.IsEmulator);
+            if (source == InputSource.TrackedController && tracked)
+            {
+                var elapsed = Mathf.Max(0.001f, now - lastPoseTime);
+                // A large discontinuity is not a legitimate swing. Ordinary fast
+                // movement retains the direct path; only a pose teleport re-anchors.
+                var jumped = hasPoseSample && !sourceChanged &&
+                    (pose - lastPoseSample).magnitude > 0.45f + 6f * elapsed;
+                if (jumped)
+                {
+                    stableSince = -1f;
+                    Recalibrate();
+                }
+                lastPoseSample = pose;
+                lastPoseTime = now;
+                hasPoseSample = true;
+                if (stableSince < 0f) stableSince = now;
+                usable = now - stableSince >= TrackingStableSeconds;
+            }
+            else
+            {
+                hasPoseSample = false;
+                stableSince = -1f;
+            }
+            var calibration = PicoXRRuntime.Calibration;
+            usable &= calibration == null || (calibration.IsReady && !calibration.IsCalibrating && calibration.HasTrackedHead);
+            if (!usable)
+            {
+                if (hasUsableTracking) Recalibrate();
+                if (missingSince < 0f) missingSince = now;
+                if (inputEnabled && now - missingSince >= TrackingPauseSeconds)
+                    trackingPauseRequested = true;
+            }
+            else
+            {
+                if (!hasUsableTracking) Recalibrate();
+                missingSince = -1f;
+            }
+            hasUsableTracking = usable;
         }
 
         private bool TryGetTrackedController(out Vector3 controllerPosition)
         {
+#if UNITY_EDITOR
+            if (PicoXRRuntime.IsEditorPreview)
+            {
+                controllerPosition = PicoXRRuntime.EditorControllerPosition;
+                return PicoXRRuntime.EditorControllerTracked;
+            }
+#endif
             // Deliberately resolve both hands every frame. An InputDevice can remain
             // valid while losing tracking, so checking only isValid would prevent the
             // mouse fallback in the emulator and during controller hand-off.
+            var preferred = controls != null && controls.LeftHanded
+                ? InputDeviceCharacteristics.Left : InputDeviceCharacteristics.Right;
+            var fallback = preferred == InputDeviceCharacteristics.Left
+                ? InputDeviceCharacteristics.Right : InputDeviceCharacteristics.Left;
             if (TryGetTrackedController(
-                    InputDeviceCharacteristics.HeldInHand | InputDeviceCharacteristics.Controller | InputDeviceCharacteristics.Right,
+                    InputDeviceCharacteristics.HeldInHand | InputDeviceCharacteristics.Controller | preferred,
                     out controllerPosition))
             {
                 return true;
             }
 
             if (TryGetTrackedController(
-                    InputDeviceCharacteristics.HeldInHand | InputDeviceCharacteristics.Controller | InputDeviceCharacteristics.Left,
+                    InputDeviceCharacteristics.HeldInHand | InputDeviceCharacteristics.Controller | fallback,
                     out controllerPosition))
             {
                 return true;
@@ -248,11 +369,31 @@ namespace ArcanePuck
             secondaryWasPressed = false;
             triggerWasPressed = false;
             hasEmulatorPoseAnchor = false;
+            mapping.Clear();
+            hasPoseSample = false;
+            stableSince = -1f;
+            suppressChargeUntilRelease = true;
+            ContinuityReset?.Invoke();
             return true;
         }
 
         private void UpdateControllerShortcuts(bool sourceChanged)
         {
+#if UNITY_EDITOR
+            if (PicoXRRuntime.IsEditorPreview)
+            {
+                var keyboard = Keyboard.current;
+                if (keyboard != null)
+                {
+                    if (keyboard.enterKey.wasPressedThisFrame) startRequested = true;
+                    if (keyboard.upArrowKey.wasPressedThisFrame) menuNavigation = Vector2.up;
+                    if (keyboard.downArrowKey.wasPressedThisFrame) menuNavigation = Vector2.down;
+                    if (keyboard.leftArrowKey.wasPressedThisFrame) menuNavigation = Vector2.left;
+                    if (keyboard.rightArrowKey.wasPressedThisFrame) menuNavigation = Vector2.right;
+                }
+                return;
+            }
+#endif
             controller.TryGetFeatureValue(XRCommonUsages.primaryButton, out var primaryPressed);
             controller.TryGetFeatureValue(XRCommonUsages.secondaryButton, out var secondaryPressed);
             if (!sourceChanged)
@@ -263,6 +404,17 @@ namespace ArcanePuck
 
             primaryWasPressed = primaryPressed;
             secondaryWasPressed = secondaryPressed;
+            controller.TryGetFeatureValue(XRCommonUsages.primary2DAxis, out var axis);
+            if (axis.magnitude < 0.35f)
+            {
+                nextMenuNavigationTime = 0f;
+            }
+            else if (Time.unscaledTime >= nextMenuNavigationTime && axis.magnitude >= 0.55f)
+            {
+                menuNavigation = Mathf.Abs(axis.y) >= Mathf.Abs(axis.x)
+                    ? new Vector2(0f, Mathf.Sign(axis.y)) : new Vector2(Mathf.Sign(axis.x), 0f);
+                nextMenuNavigationTime = Time.unscaledTime + 0.25f;
+            }
         }
 
         private void UpdateControllerTarget(Vector3 controllerPosition, bool sourceChanged)
@@ -290,23 +442,24 @@ namespace ArcanePuck
             }
 
             hasEmulatorPoseAnchor = false;
-            // InputDevices reports PICO controller poses in tracking-origin space.
-            // Transform through the XR origin before converting to table-local metres.
+            // Head and hands use the SAME tracking-space transform, including the
+            // Device-mode offset. Projection occurs in table coordinates, not world Y.
             var worldPosition = trackingOrigin != null
-                ? trackingOrigin.TransformPoint(controllerPosition)
-                : controllerPosition;
-            if (tableSpace != null)
-            {
-                // PICO poses are in the XR origin's world space; project onto the table plane.
-                worldPosition.y = tableSpace.position.y;
-            }
-
+                ? trackingOrigin.TransformPoint(controllerPosition) : controllerPosition;
             var local = config.ToTablePosition(tableSpace, worldPosition);
-            target = config.ClampMalletTarget(new Vector3(local.x, 0f, local.z), true);
+            target = mapping.Map(local, target, config,
+                controls != null ? controls.GainX : 2.5f,
+                controls != null ? controls.GainZ : 2.5f);
         }
 
         private void UpdateCharge(bool isPressed, bool pressedThisFrame, bool sourceChanged)
         {
+            if (suppressChargeUntilRelease)
+            {
+                triggerWasPressed = isPressed;
+                if (!isPressed) suppressChargeUntilRelease = false;
+                return;
+            }
             // A pointer move may select the direct-mouse route on the exact frame
             // its left button is pressed. Preserve that genuine click while still
             // suppressing a held controller trigger during an input-source swap.

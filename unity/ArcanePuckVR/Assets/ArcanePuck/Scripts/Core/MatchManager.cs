@@ -27,6 +27,7 @@ namespace ArcanePuck
         private GameHUD hud;
         private string statusText = "选择 AI 难度开始对局";
         private int lastDisplayedChargePercent = -1;
+        private PicoMalletInput picoInput;
 
         public event Action<MatchSnapshot> StateChanged;
         public event Action<MatchSide, bool> ScoreAwarded;
@@ -44,6 +45,21 @@ namespace ArcanePuck
         public string DifficultyLabel => config == null ? difficulty.ToString() : config.GetAI(difficulty).label;
         public float PlayerCharge01 => malletInput == null ? 0f : malletInput.Charge01;
         public string StatusText => statusText;
+        public string VRReadinessText
+        {
+            get
+            {
+                if (!PicoXRRuntime.IsRunning) return string.Empty;
+                if (PicoXRRuntime.Calibration == null || PicoXRRuntime.Calibration.IsCalibrating ||
+                    !PicoXRRuntime.Calibration.IsReady)
+                    return "正在定位桌边，请面向球桌并保持头显追踪";
+                if (picoInput == null || !picoInput.HasUsableTracking)
+                    return "请让主手手柄进入追踪范围";
+                return Snapshot.Phase == MatchPhase.Paused
+                    ? "自然握住手柄，确认继续即可重新校准"
+                    : "自然握住手柄，确认开始即可校准球槌";
+            }
+        }
 
         private void Awake()
         {
@@ -65,6 +81,11 @@ namespace ArcanePuck
                 puck.ResetRequired -= HandlePuckResetRequired;
             }
 
+            if (picoInput != null)
+            {
+                picoInput.ContinuityReset -= HandleInputContinuityReset;
+            }
+
             config = tableConfig;
             if (config == null)
             {
@@ -75,6 +96,11 @@ namespace ArcanePuck
             puck = puckController;
             playerMallet = playerController;
             malletInput = input;
+            picoInput = input as PicoMalletInput;
+            if (picoInput != null)
+            {
+                picoInput.ContinuityReset += HandleInputContinuityReset;
+            }
             desktopInput = input as DesktopMalletInput;
             aiMallet = aiController;
             rules = new GameRules(config);
@@ -123,6 +149,11 @@ namespace ArcanePuck
 
         private void OnDestroy()
         {
+            if (picoInput != null)
+            {
+                picoInput.ContinuityReset -= HandleInputContinuityReset;
+            }
+
             if (puck != null)
             {
                 puck.ResetRequired -= HandlePuckResetRequired;
@@ -143,6 +174,7 @@ namespace ArcanePuck
 
             HandleKeyboardShortcuts();
             HandlePicoShortcuts();
+            HandleVRTrackingState();
             if (rules.Tick(Time.unscaledDeltaTime, out var toward))
             {
                 ReleaseServe(toward);
@@ -155,6 +187,11 @@ namespace ArcanePuck
                 lastDisplayedChargePercent = chargePercent;
                 hud?.Refresh();
             }
+
+            if (PicoXRRuntime.IsRunning && rules.Snapshot.Phase != MatchPhase.Playing)
+            {
+                hud?.Refresh();
+            }
         }
 
         public void StartMatch(DifficultyId selectedDifficulty)
@@ -164,11 +201,14 @@ namespace ArcanePuck
                 return;
             }
 
+            if (!CanBeginVRPlay()) return;
+
             difficulty = selectedDifficulty;
             aiMallet?.SetDifficulty(difficulty);
             aiMallet?.ResetMallet();
             rules.StartMatch();
             ResetRoundForServe();
+            CalibrateVRHand(true);
             statusText = $"{DifficultyLabel} AI 已就位，准备发球";
             hud?.ShowPlaying();
             PublishState();
@@ -181,10 +221,13 @@ namespace ArcanePuck
                 return;
             }
 
+            if (!CanBeginVRPlay()) return;
+
             aiMallet?.SetDifficulty(difficulty);
             aiMallet?.ResetMallet();
             rules.RestartMatch();
             ResetRoundForServe();
+            CalibrateVRHand(true);
             statusText = "新的决斗开始";
             hud?.ShowPlaying();
             PublishState();
@@ -228,13 +271,14 @@ namespace ArcanePuck
 
         public void PauseMatch()
         {
-            if (!rules.Pause())
+            if (!initialized || !rules.Pause())
             {
                 return;
             }
 
             PausePhysicalState();
             SetControllersActive(false);
+            if (picoInput != null) playerMallet?.ClearPendingMotion();
             statusText = "决斗已暂停";
             hud?.ShowPaused();
             PublishState();
@@ -242,6 +286,12 @@ namespace ArcanePuck
 
         public void ResumeMatch()
         {
+            if (!initialized || rules.Snapshot.Phase != MatchPhase.Paused || !CanBeginVRPlay())
+            {
+                return;
+            }
+
+            CalibrateVRHand(false);
             if (!rules.Resume())
             {
                 return;
@@ -261,7 +311,7 @@ namespace ArcanePuck
             statusText = rules.Snapshot.Phase == MatchPhase.Serving
                 ? "准备发球"
                 : PicoXRRuntime.IsRunning
-                    ? "手柄优先控制球槌；未追踪时鼠标移动、左键蓄力"
+                    ? "挥动主手球槌，按住扳机蓄力"
                     : "鼠标移动击槌，按住左键蓄力";
             hud?.ShowPlaying();
             PublishState();
@@ -376,11 +426,20 @@ namespace ArcanePuck
 
         private void HandlePicoShortcuts()
         {
-            if (malletInput is not PicoMalletInput picoInput || rules == null) return;
+            if (picoInput == null || rules == null) return;
 
-            if (picoInput.ConsumeStartRequest() && rules.Snapshot.Phase == MatchPhase.Idle)
+            var navigation = picoInput.ConsumeMenuNavigation();
+            var confirm = picoInput.ConsumeStartRequest();
+            if (rules.Snapshot.Phase is MatchPhase.Idle or MatchPhase.Paused or MatchPhase.Finished)
             {
-                StartMatch(DifficultyId.Mage);
+                if (hud != null)
+                {
+                    hud.HandlePicoMenuNavigation(navigation, confirm);
+                }
+                else if (confirm && rules.Snapshot.Phase == MatchPhase.Idle)
+                {
+                    StartMatch(DifficultyId.Mage);
+                }
             }
 
             if (picoInput.ConsumePauseRequest() &&
@@ -388,6 +447,60 @@ namespace ArcanePuck
             {
                 TogglePause();
             }
+        }
+
+        public void RequestVRRecenter()
+        {
+            if (!PicoXRRuntime.IsRunning || PicoXRRuntime.Calibration == null) return;
+
+            PauseMatch();
+            playerMallet?.ClearPendingMotion();
+            var requested = PicoXRRuntime.Calibration.RequestRecenter();
+            statusText = requested ? "正在重新定位，请面向球桌" : "等待头显追踪后重新定位";
+            PublishState();
+        }
+
+        private bool CanBeginVRPlay()
+        {
+            if (!PicoXRRuntime.IsRunning || picoInput == null) return true;
+
+            var calibration = PicoXRRuntime.Calibration;
+            if (calibration != null && calibration.IsReady && !calibration.IsCalibrating &&
+                picoInput.HasUsableTracking)
+                return true;
+
+            statusText = VRReadinessText;
+            hud?.Refresh();
+            return false;
+        }
+
+        private void CalibrateVRHand(bool center)
+        {
+            if (picoInput == null) return;
+            picoInput.Recalibrate(center);
+            playerMallet?.ClearPendingMotion();
+        }
+
+        private void HandleInputContinuityReset()
+        {
+            playerMallet?.ClearPendingMotion();
+        }
+
+        private void HandleVRTrackingState()
+        {
+            if (!PicoXRRuntime.IsRunning || picoInput == null) return;
+            var pauseForTracking = picoInput.ConsumeTrackingPauseRequest() ||
+                                   (rules.Snapshot.Phase == MatchPhase.Serving && !picoInput.HasUsableTracking);
+            var calibration = PicoXRRuntime.Calibration;
+            var pauseForPosition = calibration != null && (!calibration.IsReady || calibration.IsCalibrating);
+            if ((!pauseForTracking && !pauseForPosition) ||
+                rules.Snapshot.Phase is not (MatchPhase.Playing or MatchPhase.Serving)) return;
+
+            PauseMatch();
+            statusText = pauseForPosition
+                ? "定位已改变，完成定位后确认继续"
+                : "主手追踪已中断，恢复后确认继续";
+            PublishState();
         }
 
         private void HandlePuckResetRequired()
@@ -429,7 +542,10 @@ namespace ArcanePuck
 
             if (playerMallet != null && playerMallet.TryGetComponent<Rigidbody>(out var playerBody))
             {
-                playerBody.position = config.ToWorldPosition(tableRoot, new Vector3(0f, 0f, -config.length * 0.28f));
+                var localPosition = picoInput != null
+                    ? VRMalletMapping.Center(config)
+                    : new Vector3(0f, 0f, -config.length * 0.28f);
+                playerBody.position = config.ToWorldPosition(tableRoot, localPosition);
             }
 
             if (aiMallet != null && aiMallet.Body != null)

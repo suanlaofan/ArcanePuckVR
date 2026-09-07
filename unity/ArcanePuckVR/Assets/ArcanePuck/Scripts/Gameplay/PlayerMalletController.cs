@@ -101,14 +101,20 @@ namespace ArcanePuck
             return true;
         }
 
-        public void ResetMallet()
+        public void ClearPendingMotion()
         {
             currentVelocity = Vector3.zero;
             pendingCharge = 0f;
             hasPendingCharge = false;
+        }
+
+        public void ResetMallet()
+        {
+            ClearPendingMotion();
             body.position = config.ToWorldPosition(
                 transform.parent,
-                new Vector3(0f, 0f, -config.length * 0.28f));
+                input is PicoMalletInput ? VRMalletMapping.Center(config)
+                    : new Vector3(0f, 0f, -config.length * 0.28f));
             body.rotation = transform.parent != null ? transform.parent.rotation : Quaternion.identity;
             input?.ResetInput();
         }

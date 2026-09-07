@@ -10,6 +10,23 @@ namespace ArcanePuck.Tests
     {
         private const string ScenePath = "Assets/ArcanePuck/Scenes/ArcanePuck.unity";
 
+#if UNITY_EDITOR
+        private bool savedVRPreview;
+
+        [SetUp]
+        public void UseDesktopControls()
+        {
+            savedVRPreview = PicoXRRuntime.EditorPreviewEnabled;
+            PicoXRRuntime.EditorPreviewEnabled = false;
+        }
+
+        [TearDown]
+        public void RestorePreviewPreference()
+        {
+            PicoXRRuntime.EditorPreviewEnabled = savedVRPreview;
+        }
+#endif
+
         [UnityTest]
         public IEnumerator RuntimeScene_BuildsPlayableMatchAndCompletesGoldenGoal()
         {

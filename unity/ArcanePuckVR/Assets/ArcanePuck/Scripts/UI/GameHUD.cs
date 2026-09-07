@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Events;
@@ -24,7 +26,9 @@ namespace ArcanePuck
         // Keep the PICO HUD comfortably inside the view without attaching it to
         // the game table. The Canvas remains a camera child, so the HMD's
         // UpdateAndBeforeRender tracking update carries it with the user's head.
-        private static readonly Vector3 PicoHeadLockedOffset = new(0f, -0.32f, 1.85f);
+        private static readonly Vector3 PicoHeadLockedOffset = new(0f, -0.16f, 0.925f);
+        private static readonly Vector3 PicoMenuOffset = new(0f, 0.15f, 0.925f);
+        private Material vrOverlayMaterial;
         private static readonly Color FallbackGold = new(0.902f, 0.741f, 0.384f);
         private static readonly Color FallbackCyan = new(0.275f, 0.91f, 1f);
         private static readonly Color FallbackViolet = new(0.647f, 0.475f, 1f);
@@ -44,6 +48,11 @@ namespace ArcanePuck
         private Image chargeFill;
         private Sprite cutCornerSprite;
         private Sprite solidSprite;
+        private Text vrReadinessLabel;
+        private readonly List<Button> vrMenuButtons = new();
+        private readonly Dictionary<Button, Action<int>> vrAdjustments = new();
+        private readonly List<(Text label, Func<string> value)> vrSettingLabels = new();
+        private int vrSelection;
 
         public string ScoreText => scoreLabel != null ? scoreLabel.text : string.Empty;
         public string StatusLineText => statusLabel != null ? statusLabel.text : string.Empty;
@@ -104,6 +113,39 @@ namespace ArcanePuck
             {
                 UpdateHUDText();
             }
+
+            if (vrReadinessLabel != null)
+            {
+                vrReadinessLabel.text = match != null ? match.VRReadinessText : string.Empty;
+            }
+
+            foreach (var setting in vrSettingLabels)
+            {
+                if (setting.label != null) setting.label.text = setting.value();
+            }
+        }
+
+        public void HandlePicoMenuNavigation(Vector2 navigation, bool confirm)
+        {
+            if (!PicoXRRuntime.IsRunning || view == GameView.Playing || vrMenuButtons.Count == 0) return;
+
+            if (Mathf.Abs(navigation.y) > 0.5f)
+            {
+                vrSelection = (vrSelection + (navigation.y > 0f ? -1 : 1) + vrMenuButtons.Count) %
+                              vrMenuButtons.Count;
+                FocusVRSelection();
+            }
+
+            var selected = vrMenuButtons[Mathf.Clamp(vrSelection, 0, vrMenuButtons.Count - 1)];
+            if (Mathf.Abs(navigation.x) > 0.5f && vrAdjustments.TryGetValue(selected, out var adjust))
+            {
+                adjust(navigation.x > 0f ? 1 : -1);
+                Refresh();
+            }
+            else if (confirm && selected != null && selected.interactable)
+            {
+                selected.onClick.Invoke();
+            }
         }
 
         private void BuildCanvas()
@@ -136,7 +178,7 @@ namespace ArcanePuck
                 // tracked camera to preserve that correction while making the UI
                 // genuinely head-locked (including before-render pose updates).
                 rect.SetParent(Camera.main.transform, false);
-                rect.localScale = Vector3.one * 0.0024f;
+                rect.localScale = Vector3.one * 0.0012f;
                 rect.localPosition = PicoHeadLockedOffset;
                 rect.localRotation = Quaternion.identity;
                 canvas.worldCamera = Camera.main;
@@ -157,6 +199,11 @@ namespace ArcanePuck
             scoreLabel = null;
             statusLabel = null;
             chargeFill = null;
+            vrReadinessLabel = null;
+            vrMenuButtons.Clear();
+            vrAdjustments.Clear();
+            vrSettingLabels.Clear();
+            vrSelection = 0;
 
             menuLayer = new GameObject("Menu Layer", typeof(RectTransform));
             menuLayer.transform.SetParent(canvas.transform, false);
@@ -167,7 +214,8 @@ namespace ArcanePuck
             Stretch(hudLayer.GetComponent<RectTransform>());
             menuLayer.transform.SetAsLastSibling();
 
-            if (view is GameView.Playing or GameView.Paused or GameView.Finished)
+            if (view == GameView.Playing ||
+                (!PicoXRRuntime.IsRunning && (view is GameView.Paused or GameView.Finished)))
             {
                 BuildGameplayHUD();
             }
@@ -187,10 +235,33 @@ namespace ArcanePuck
                     BuildFinishedOverlay();
                     break;
             }
+
+            if (PicoXRRuntime.IsRunning)
+            {
+                canvas.transform.localPosition = view == GameView.Playing ? PicoHeadLockedOffset : PicoMenuOffset;
+                // A head-locked menu must stay readable even when the player looks
+                // down at the nearby table, including the lower seated tabletop.
+                if (vrOverlayMaterial == null)
+                {
+                    var shader = Resources.Load<Shader>("VRUIOverlay");
+                    if (shader != null) vrOverlayMaterial = new Material(shader);
+                }
+                if (vrOverlayMaterial != null)
+                    foreach (var graphic in canvas.GetComponentsInChildren<Graphic>(true))
+                        graphic.material = vrOverlayMaterial;
+            }
+            FocusVRSelection();
+            Refresh();
         }
 
         private void BuildMenu()
         {
+            if (PicoXRRuntime.IsRunning)
+            {
+                BuildVRControlPanel(false);
+                return;
+            }
+
             AddFullscreenTint(menuLayer.transform, new Color(0.012f, 0.004f, 0.045f, 0.20f));
             AddSideVignettes(menuLayer.transform, 0.12f);
             AddBrand(menuLayer.transform, 258f);
@@ -209,6 +280,12 @@ namespace ArcanePuck
 
         private void BuildDifficulty()
         {
+            if (PicoXRRuntime.IsRunning)
+            {
+                BuildVRDifficulty();
+                return;
+            }
+
             AddFullscreenTint(menuLayer.transform, new Color(0.008f, 0.004f, 0.035f, 0.50f));
             var panel = CreateFramedPanel(menuLayer.transform, "Difficulty Panel", new Vector2(600f, 652f),
                 Violet, VioletGlass, 2f);
@@ -227,6 +304,12 @@ namespace ArcanePuck
 
         private void BuildPauseOverlay()
         {
+            if (PicoXRRuntime.IsRunning)
+            {
+                BuildVRControlPanel(true);
+                return;
+            }
+
             AddFullscreenTint(menuLayer.transform, new Color(0.006f, 0.003f, 0.025f, 0.62f));
             var panel = CreateFramedPanel(menuLayer.transform, "Pause Panel", new Vector2(500f, 492f),
                 Violet, VioletGlass, 2f);
@@ -244,6 +327,12 @@ namespace ArcanePuck
 
         private void BuildFinishedOverlay()
         {
+            if (PicoXRRuntime.IsRunning)
+            {
+                BuildVRFinished();
+                return;
+            }
+
             AddFullscreenTint(menuLayer.transform, new Color(0.004f, 0.002f, 0.02f, 0.68f));
             var playerWon = match != null && match.WinnerIsPlayer;
             var accent = playerWon ? Gold : Teal;
@@ -273,6 +362,12 @@ namespace ArcanePuck
 
         private void BuildGameplayHUD()
         {
+            if (PicoXRRuntime.IsRunning)
+            {
+                BuildVRGameplayHUD();
+                return;
+            }
+
             var scoreFrame = CreateFramedPanel(hudLayer.transform, "Arcane Score Bar", new Vector2(500f, 68f),
                 new Color(Gold.r, Gold.g, Gold.b, 0.92f), new Color(0.12f, 0.055f, 0.27f, 0.94f), 2f);
             PinToTop(scoreFrame, new Vector2(0f, -38f));
@@ -315,6 +410,166 @@ namespace ArcanePuck
             UpdateHUDText();
         }
 
+        private void BuildVRControlPanel(bool paused)
+        {
+            AddFullscreenTint(menuLayer.transform, new Color(0.008f, 0.004f, 0.035f, 0.38f));
+            var panel = CreateFramedPanel(menuLayer.transform, paused ? "VR Pause Settings" : "VR Start Settings",
+                new Vector2(850f, 540f), Violet, VioletGlass, 2f);
+            AddLabel(panel, paused ? "对局已暂停" : "奥术飞盘", 40, Gold, 0f, 221f,
+                new Vector2(750f, 52f), FontStyle.Bold);
+
+            if (paused)
+            {
+                AddButton(panel, "继续对局", new Vector2(-250f, 160f), match.ResumeMatch,
+                    Cyan, new Vector2(230f, 48f), 22);
+                AddButton(panel, "重新开始", new Vector2(0f, 160f), match.RestartMatch,
+                    Gold, new Vector2(230f, 48f), 22);
+                AddButton(panel, "返回主页", new Vector2(250f, 160f), match.ReturnToMenu,
+                    Violet, new Vector2(230f, 48f), 22);
+            }
+            else
+            {
+                AddButton(panel, "开始对局 · 法师", new Vector2(-190f, 160f), () => match.StartMatch(DifficultyId.Mage),
+                    Gold, new Vector2(360f, 48f), 22);
+                AddButton(panel, "选择 AI 难度", new Vector2(190f, 160f), match.OpenDifficultySelection,
+                    Cyan, new Vector2(360f, 48f), 22);
+            }
+
+            AddVRSetting(panel, 96f, () =>
+            {
+                var controls = PicoXRRuntime.Controls;
+                var names = new[] { "低", "标准", "高" };
+                return $"球槌灵敏度    ‹  {names[Mathf.Clamp(controls.SensitivityPreset, 0, 2)]}  {controls.GainX:0.0} 倍  ›";
+            }, direction =>
+            {
+                var controls = PicoXRRuntime.Controls;
+                controls.SetSensitivityPreset((controls.SensitivityPreset + direction + 3) % 3);
+            });
+            AddVRSetting(panel, 48f,
+                () => $"距桌边距离    ‹  {PicoXRRuntime.Controls.StartDistance:0.00} 米  ›",
+                direction =>
+                {
+                    if (PicoXRRuntime.Calibration == null || PicoXRRuntime.Calibration.IsCalibrating) return;
+                    var distances = new[] { 0.30f, 0.45f, 0.65f };
+                    var current = PicoXRRuntime.Controls.StartDistance;
+                    var index = 0;
+                    for (var i = 1; i < distances.Length; i++)
+                        if (Mathf.Abs(distances[i] - current) < Mathf.Abs(distances[index] - current)) index = i;
+                    PicoXRRuntime.Controls.SetStartDistance(distances[(index + direction + distances.Length) % distances.Length]);
+                    match.RequestVRRecenter();
+                });
+            AddVRSetting(panel, 0f,
+                () => $"主手    ‹  {(PicoXRRuntime.Controls.LeftHanded ? "左手" : "右手")}  ›",
+                _ => PicoXRRuntime.Controls.SetLeftHanded(!PicoXRRuntime.Controls.LeftHanded));
+            AddVRSetting(panel, -48f,
+                () => $"游玩姿势    ‹  {(PicoXRRuntime.Controls.Seated ? "坐姿" : "站姿")}  ›",
+                _ =>
+                {
+                    if (PicoXRRuntime.Calibration == null || PicoXRRuntime.Calibration.IsCalibrating) return;
+                    PicoXRRuntime.Controls.SetSeated(!PicoXRRuntime.Controls.Seated);
+                    match.RequestVRRecenter();
+                });
+            AddButton(panel, "重新定位桌边", new Vector2(0f, -96f), match.RequestVRRecenter,
+                Cyan, new Vector2(740f, 40f), 20);
+
+            vrReadinessLabel = AddLabel(panel, string.Empty, 19, Gold, 0f, -152f, new Vector2(790f, 34f));
+            AddLabel(panel, "摇杆上下选择 · 左右调整 · 主按键确认", 18,
+                new Color(0.87f, 0.90f, 1f), 0f, -197f, new Vector2(790f, 30f));
+            AddLabel(panel, paused ? "副按键继续 · 按住扳机蓄力" : "进入对局后，副按键暂停 · 按住扳机蓄力", 16,
+                new Color(0.76f, 0.79f, 0.91f), 0f, -230f, new Vector2(790f, 28f));
+        }
+
+        private void AddVRSetting(Transform parent, float y, Func<string> text, Action<int> adjust)
+        {
+            var button = AddButton(parent, text(), new Vector2(0f, y), () =>
+                {
+                    adjust(1);
+                    Refresh();
+                }, Violet, new Vector2(740f, 40f), 20);
+            vrAdjustments[button] = adjust;
+            vrSettingLabels.Add((button.GetComponentInChildren<Text>(), text));
+        }
+
+        private void BuildVRDifficulty()
+        {
+            AddFullscreenTint(menuLayer.transform, new Color(0.008f, 0.004f, 0.035f, 0.45f));
+            var panel = CreateFramedPanel(menuLayer.transform, "VR Difficulty", new Vector2(700f, 540f),
+                Violet, VioletGlass, 2f);
+            AddLabel(panel, "选择 AI 对手", 36, Gold, 0f, 215f, new Vector2(600f, 48f), FontStyle.Bold);
+            AddDifficulty(panel, "学徒", "反应慢 · 速度低 · 失误更多", DifficultyId.Apprentice, 128f, Cyan);
+            AddDifficulty(panel, "法师", "攻守均衡 · 基础预判与射门", DifficultyId.Mage, 30f, Gold);
+            AddDifficulty(panel, "大法师", "反应迅捷 · 尝试借边进攻", DifficultyId.Archmage, -68f, Violet);
+            AddButton(panel, "返回", new Vector2(0f, -149f), match.ReturnToMenu,
+                Violet, new Vector2(300f, 42f), 20);
+            vrReadinessLabel = AddLabel(panel, string.Empty, 18, Gold, 0f, -198f, new Vector2(650f, 30f));
+            AddLabel(panel, "摇杆上下选择 · 主按键校准并开始", 17, Color.white,
+                0f, -233f, new Vector2(640f, 28f));
+            // The standard difficulty remains the initial selection.
+            vrSelection = 1;
+        }
+
+        private void BuildVRFinished()
+        {
+            AddFullscreenTint(menuLayer.transform, new Color(0.004f, 0.002f, 0.02f, 0.5f));
+            var playerWon = match != null && match.WinnerIsPlayer;
+            var panel = CreateFramedPanel(menuLayer.transform, "VR Result", new Vector2(650f, 510f),
+                playerWon ? Gold : Cyan, VioletGlass, 2f);
+            AddLabel(panel, playerWon ? "你获得了胜利！" : "AI 巫师获胜", 39, Gold,
+                0f, 173f, new Vector2(580f, 56f), FontStyle.Bold);
+            AddLabel(panel, $"{match.PlayerScore}  :  {match.AIScore}", 54, Color.white,
+                0f, 86f, new Vector2(550f, 70f), FontStyle.Bold);
+            AddLabel(panel, match.GoldenGoal ? "金球加时 · 一击定胜负" : "本轮决斗已结束", 19,
+                Cyan, 0f, 25f, new Vector2(580f, 30f));
+            AddButton(panel, "再来一局", new Vector2(0f, -45f), match.RestartMatch,
+                Gold, new Vector2(420f, 50f), 22);
+            AddButton(panel, "返回主页", new Vector2(0f, -110f), match.ReturnToMenu,
+                Violet, new Vector2(420f, 48f), 21);
+            vrReadinessLabel = AddLabel(panel, string.Empty, 18, Gold, 0f, -172f, new Vector2(610f, 30f));
+            AddLabel(panel, "摇杆上下选择 · 主按键确认", 17, Color.white,
+                0f, -216f, new Vector2(580f, 28f));
+        }
+
+        private void BuildVRGameplayHUD()
+        {
+            // Keep all in-match graphics at the top of the head-locked canvas;
+            // the centre and lower view stay clear for the nearby table and puck.
+            var scoreFrame = CreateFramedPanel(hudLayer.transform, "VR Compact Score", new Vector2(450f, 44f),
+                Gold, new Color(0.065f, 0.03f, 0.15f, 0.82f), 1.5f);
+            PinToTop(scoreFrame, new Vector2(0f, -10f));
+            scoreLabel = AddRichLabel(scoreFrame, string.Empty, 21, Color.white, 0f, 0f,
+                new Vector2(430f, 40f), FontStyle.Bold);
+            var statusRect = new GameObject("VR Compact Status", typeof(RectTransform)).GetComponent<RectTransform>();
+            statusRect.SetParent(hudLayer.transform, false);
+            statusRect.sizeDelta = new Vector2(600f, 26f);
+            PinToTop(statusRect, new Vector2(0f, -61f));
+            statusLabel = AddRichLabel(statusRect, string.Empty, 15, Color.white, 0f, 0f,
+                new Vector2(580f, 24f));
+            var bar = AddFlatRect(hudLayer.transform, "VR Charge Meter", new Vector2(0.5f, 1f),
+                new Vector2(0f, -91f), new Vector2(200f, 4f), new Color(0.3f, 0.24f, 0.48f, 0.6f));
+            var fillRect = AddFlatRect(bar, "VR Charge Fill", Vector2.zero, Vector2.zero,
+                Vector2.zero, Cyan);
+            fillRect.anchorMin = Vector2.zero;
+            fillRect.anchorMax = new Vector2(0f, 1f);
+            fillRect.offsetMin = fillRect.offsetMax = Vector2.zero;
+            chargeFill = fillRect.GetComponent<Image>();
+            UpdateHUDText();
+        }
+
+        private void FocusVRSelection()
+        {
+            if (!PicoXRRuntime.IsRunning || vrMenuButtons.Count == 0) return;
+            vrSelection = Mathf.Clamp(vrSelection, 0, vrMenuButtons.Count - 1);
+            for (var i = 0; i < vrMenuButtons.Count; i++)
+            {
+                var button = vrMenuButtons[i];
+                if (button == null) continue;
+                var outline = button.GetComponent<Outline>();
+                if (outline != null) outline.enabled = i == vrSelection;
+            }
+            if (EventSystem.current != null)
+                EventSystem.current.SetSelectedGameObject(vrMenuButtons[vrSelection].gameObject);
+        }
+
         private void UpdateHUDText()
         {
             if (match == null || scoreLabel == null || statusLabel == null)
@@ -325,6 +580,16 @@ namespace ArcanePuck
             var overtime = match.GoldenGoal
                 ? $"   <size=13><color=#{ToHex(Gold)}>· 金球加时</color></size>"
                 : string.Empty;
+            if (PicoXRRuntime.IsRunning)
+            {
+                scoreLabel.text = $"你  {match.PlayerScore}     ·     {match.DifficultyLabel}     ·     AI  {match.AIScore}" +
+                                  (match.GoldenGoal ? "   金球" : string.Empty);
+                statusLabel.text = $"{match.StatusText}  ·  蓄力 {Mathf.RoundToInt(match.PlayerCharge01 * 100f)}%";
+                if (chargeFill != null)
+                    chargeFill.rectTransform.anchorMax = new Vector2(Mathf.Clamp01(match.PlayerCharge01), 1f);
+                return;
+            }
+
             scoreLabel.text =
                 $"<color=#{ToHex(new Color(0.83f, 0.69f, 1f))}>你</color>  <size=31><color=#FFFFFF>{match.PlayerScore}</color></size>" +
                 $"   <color=#{ToHex(Gold)}>✦</color>   <size=17><color=#{ToHex(new Color(0.92f, 0.86f, 1f))}>{match.DifficultyLabel}</color></size>" +
@@ -391,6 +656,17 @@ namespace ArcanePuck
             colors.disabledColor = new Color(0.45f, 0.45f, 0.55f, 0.55f);
             colors.fadeDuration = 0.08f;
             button.colors = colors;
+            if (PicoXRRuntime.IsRunning)
+            {
+                vrMenuButtons.Add(button);
+                var outline = button.gameObject.AddComponent<Outline>();
+                outline.effectColor = Gold;
+                outline.effectDistance = new Vector2(3f, 3f);
+                outline.enabled = false;
+                var navigation = button.navigation;
+                navigation.mode = Navigation.Mode.None;
+                button.navigation = navigation;
+            }
             return button;
         }
 
@@ -663,6 +939,7 @@ namespace ArcanePuck
 
         private void OnDestroy()
         {
+            if (vrOverlayMaterial != null) Destroy(vrOverlayMaterial);
             if (cutCornerSprite != null)
             {
                 var texture = cutCornerSprite.texture;

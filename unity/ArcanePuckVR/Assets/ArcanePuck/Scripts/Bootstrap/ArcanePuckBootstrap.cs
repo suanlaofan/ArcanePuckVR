@@ -64,7 +64,7 @@ namespace ArcanePuck
             var ai = BuildAIMallet(tableRoot, config, theme, puck, sceneModels?.TakeAiMalletModel());
 
             var camera = usePicoXR
-                ? PicoXRRuntime.CreateCamera(config)
+                ? PicoXRRuntime.CreateCamera(config, tableRoot)
                 : sceneModels?.EnableRuntimeCamera() ?? BuildCamera(config, tableRoot);
             if (!usePicoXR)
             {
