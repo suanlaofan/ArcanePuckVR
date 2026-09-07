@@ -16,7 +16,7 @@ namespace ArcanePuck.Editor
             if (EditorApplication.isPlayingOrWillChangePlaymode) return;
             PicoXRRuntime.EditorPreviewEnabled = !PicoXRRuntime.EditorPreviewEnabled;
             Debug.Log($"Arcane Puck VR Editor preview {(PicoXRRuntime.EditorPreviewEnabled ? "enabled" : "disabled")}. " +
-                      "This uses a simulated head/controller and does not verify a PICO device.");
+                      "This uses a simulated head and the Game View mouse; it does not verify a PICO device.");
         }
 
         [MenuItem(ToggleMenu, true)]
@@ -45,6 +45,7 @@ namespace ArcanePuck.Editor
                 EditorSceneManager.OpenScene(GameScenePath, OpenSceneMode.Single);
             }
             PicoXRRuntime.EditorPreviewEnabled = true;
+            PicoXRRuntime.EditorSimulateController = false;
             EditorApplication.isPlaying = true;
         }
     }

@@ -23,6 +23,18 @@ namespace ArcanePuck
             }
         }
 
+        public static bool IsEditorMousePreview
+        {
+            get
+            {
+#if UNITY_EDITOR
+                return IsEditorPreview && !EditorSimulateController;
+#else
+                return false;
+#endif
+            }
+        }
+
 #if UNITY_EDITOR
         public static bool EditorPreviewEnabled
         {
@@ -31,6 +43,9 @@ namespace ArcanePuck
         }
         public static Vector3 EditorControllerPosition { get; set; } = new(0.25f, 1.20f, 0.35f);
         public static bool EditorControllerTracked { get; set; } = true;
+        // Pose injection is opt-in for automated tracking tests. Interactive VR
+        // preview uses the actual Game View mouse instead of a stationary hand.
+        public static bool EditorSimulateController { get; set; }
 #endif
 
         public static VRControlConfig Controls { get; private set; }
@@ -85,6 +100,7 @@ namespace ArcanePuck
             isEmulatorResolved = false;
             nextEmulatorProbeTime = 0f;
 #if UNITY_EDITOR
+            EditorSimulateController = false;
             EditorControllerPosition = new Vector3(0.25f, 1.20f, 0.35f);
             EditorControllerTracked = true;
 #endif

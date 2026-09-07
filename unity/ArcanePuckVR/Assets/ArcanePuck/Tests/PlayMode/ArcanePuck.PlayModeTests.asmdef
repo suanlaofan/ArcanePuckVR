@@ -2,7 +2,8 @@
   "name": "ArcanePuck.PlayModeTests",
   "rootNamespace": "ArcanePuck.Tests",
   "references": [
-    "ArcanePuck.Runtime"
+    "ArcanePuck.Runtime",
+    "Unity.InputSystem"
   ],
   "includePlatforms": [],
   "excludePlatforms": [],

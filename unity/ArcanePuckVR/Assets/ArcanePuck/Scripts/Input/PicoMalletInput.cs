@@ -80,6 +80,7 @@ namespace ArcanePuck
         public bool IsCharging => charging;
         public bool IsUsingTrackedController => activeSource == InputSource.TrackedController;
         public bool IsUsingDirectPicoInput => activeSource == InputSource.TrackedController ||
+                                              (PicoXRRuntime.IsEditorMousePreview && activeSource == InputSource.Mouse) ||
                                               (PicoXRRuntime.IsEmulator &&
                                                activeSource == InputSource.Mouse &&
                                                emulatorMouseObserved);
@@ -123,7 +124,7 @@ namespace ArcanePuck
 
             // Keep the controller's menu shortcuts available in the emulator even
             // when its raw mouse is driving the mallet position.
-            if (hasTrackedController)
+            if (hasTrackedController || PicoXRRuntime.IsEditorMousePreview)
             {
                 UpdateControllerShortcuts(sourceChanged);
             }
@@ -260,7 +261,7 @@ namespace ArcanePuck
         {
             var now = Time.unscaledTime;
             var usable = source == InputSource.Mouse && Mouse.current != null &&
-                         (!PicoXRRuntime.IsRunning || PicoXRRuntime.IsEmulator);
+                         (!PicoXRRuntime.IsRunning || PicoXRRuntime.IsEmulator || PicoXRRuntime.IsEditorMousePreview);
             if (source == InputSource.TrackedController && tracked)
             {
                 var elapsed = Mathf.Max(0.001f, now - lastPoseTime);
@@ -307,7 +308,7 @@ namespace ArcanePuck
             if (PicoXRRuntime.IsEditorPreview)
             {
                 controllerPosition = PicoXRRuntime.EditorControllerPosition;
-                return PicoXRRuntime.EditorControllerTracked;
+                return PicoXRRuntime.EditorSimulateController && PicoXRRuntime.EditorControllerTracked;
             }
 #endif
             // Deliberately resolve both hands every frame. An InputDevice can remain

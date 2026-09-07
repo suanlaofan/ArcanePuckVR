@@ -28,6 +28,8 @@ namespace ArcanePuck.Tests
         private readonly int[] savedIntValues = new int[4];
         private float savedDistance;
         private bool capturedPreferences;
+        private bool savedEditorPreview;
+        private bool savedControllerSimulation;
         private MatchManager match;
         private PicoMalletInput input;
         private PlayerMalletController player;
@@ -45,7 +47,10 @@ namespace ArcanePuck.Tests
                 else savedIntValues[i] = PlayerPrefs.GetInt(PreferenceKeys[i]);
             }
             capturedPreferences = true;
+            savedEditorPreview = PicoXRRuntime.EditorPreviewEnabled;
+            savedControllerSimulation = PicoXRRuntime.EditorSimulateController;
             PicoXRRuntime.EditorPreviewEnabled = true;
+            PicoXRRuntime.EditorSimulateController = true;
             PicoXRRuntime.EditorControllerPosition = NeutralHand;
             PicoXRRuntime.EditorControllerTracked = true;
             yield return SceneManager.LoadSceneAsync(ScenePath, LoadSceneMode.Single);
@@ -78,7 +83,8 @@ namespace ArcanePuck.Tests
         {
             // NUnit invokes TearDown after assertion failures as well. Never leave
             // synthetic VR input enabled for another fixture or the user's Editor.
-            PicoXRRuntime.EditorPreviewEnabled = false;
+            PicoXRRuntime.EditorPreviewEnabled = savedEditorPreview;
+            PicoXRRuntime.EditorSimulateController = savedControllerSimulation;
             PicoXRRuntime.EditorControllerTracked = true;
             PicoXRRuntime.EditorControllerPosition = NeutralHand;
             if (!capturedPreferences) return;

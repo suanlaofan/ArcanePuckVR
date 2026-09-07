@@ -54,7 +54,9 @@ namespace ArcanePuck
                     !PicoXRRuntime.Calibration.IsReady)
                     return "正在定位桌边，请面向球桌并保持头显追踪";
                 if (picoInput == null || !picoInput.HasUsableTracking)
-                    return "请让主手手柄进入追踪范围";
+                    return PicoXRRuntime.IsEditorMousePreview ? "请将鼠标移入游戏窗口" : "请让主手手柄进入追踪范围";
+                if (PicoXRRuntime.IsEditorMousePreview)
+                    return "鼠标移动球槌 · 按住左键蓄力 · Esc 暂停";
                 return Snapshot.Phase == MatchPhase.Paused
                     ? "自然握住手柄，确认继续即可重新校准"
                     : "自然握住手柄，确认开始即可校准球槌";
@@ -310,7 +312,7 @@ namespace ArcanePuck
 
             statusText = rules.Snapshot.Phase == MatchPhase.Serving
                 ? "准备发球"
-                : PicoXRRuntime.IsRunning
+                : PicoXRRuntime.IsRunning && !PicoXRRuntime.IsEditorMousePreview
                     ? "挥动主手球槌，按住扳机蓄力"
                     : "鼠标移动击槌，按住左键蓄力";
             hud?.ShowPlaying();

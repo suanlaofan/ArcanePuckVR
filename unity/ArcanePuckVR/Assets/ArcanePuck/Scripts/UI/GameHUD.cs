@@ -473,9 +473,10 @@ namespace ArcanePuck
                 Cyan, new Vector2(740f, 40f), 20);
 
             vrReadinessLabel = AddLabel(panel, string.Empty, 19, Gold, 0f, -152f, new Vector2(790f, 34f));
-            AddLabel(panel, "摇杆上下选择 · 左右调整 · 主按键确认", 18,
+            AddLabel(panel, PicoXRRuntime.IsEditorMousePreview ? "鼠标点击设置 · 方向键选择/调整 · Enter 确认" : "摇杆上下选择 · 左右调整 · 主按键确认", 18,
                 new Color(0.87f, 0.90f, 1f), 0f, -197f, new Vector2(790f, 30f));
-            AddLabel(panel, paused ? "副按键继续 · 按住扳机蓄力" : "进入对局后，副按键暂停 · 按住扳机蓄力", 16,
+            AddLabel(panel, PicoXRRuntime.IsEditorMousePreview ? "鼠标移动球槌 · 按住左键蓄力 · Esc 暂停/继续" :
+                paused ? "副按键继续 · 按住扳机蓄力" : "进入对局后，副按键暂停 · 按住扳机蓄力", 16,
                 new Color(0.76f, 0.79f, 0.91f), 0f, -230f, new Vector2(790f, 28f));
         }
 
@@ -502,7 +503,7 @@ namespace ArcanePuck
             AddButton(panel, "返回", new Vector2(0f, -149f), match.ReturnToMenu,
                 Violet, new Vector2(300f, 42f), 20);
             vrReadinessLabel = AddLabel(panel, string.Empty, 18, Gold, 0f, -198f, new Vector2(650f, 30f));
-            AddLabel(panel, "摇杆上下选择 · 主按键校准并开始", 17, Color.white,
+            AddLabel(panel, PicoXRRuntime.IsEditorMousePreview ? "鼠标点击难度开始 · 方向键选择 · Enter 确认" : "摇杆上下选择 · 主按键校准并开始", 17, Color.white,
                 0f, -233f, new Vector2(640f, 28f));
             // The standard difficulty remains the initial selection.
             vrSelection = 1;
@@ -525,7 +526,7 @@ namespace ArcanePuck
             AddButton(panel, "返回主页", new Vector2(0f, -110f), match.ReturnToMenu,
                 Violet, new Vector2(420f, 48f), 21);
             vrReadinessLabel = AddLabel(panel, string.Empty, 18, Gold, 0f, -172f, new Vector2(610f, 30f));
-            AddLabel(panel, "摇杆上下选择 · 主按键确认", 17, Color.white,
+            AddLabel(panel, PicoXRRuntime.IsEditorMousePreview ? "鼠标点击按钮 · 方向键选择 · Enter 确认" : "摇杆上下选择 · 主按键确认", 17, Color.white,
                 0f, -216f, new Vector2(580f, 28f));
         }
 
