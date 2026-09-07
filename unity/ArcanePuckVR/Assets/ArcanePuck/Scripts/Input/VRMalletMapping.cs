@@ -12,6 +12,18 @@ namespace ArcanePuck
         public static Vector3 Center(TableConfig config) =>
             new(0f, 0f, -(config.MalletLimitZ + config.MiddleClearance) * 0.5f);
 
+        public static bool TryProjectPointer(Ray ray, Transform tableSpace, TableConfig config, out Vector3 target)
+        {
+            target = default;
+            var plane = new Plane(tableSpace != null ? tableSpace.up : Vector3.up,
+                tableSpace != null ? tableSpace.position : Vector3.zero);
+            if (!plane.Raycast(ray, out var distance)) return false;
+            var local = config.ToTablePosition(tableSpace, ray.GetPoint(distance));
+            if (!float.IsFinite(local.x) || !float.IsFinite(local.z)) return false;
+            target = config.ClampMalletTarget(local, true);
+            return true;
+        }
+
         public void Clear() => IsAnchored = false;
 
         public void Anchor(Vector3 hand, Vector3 mallet)

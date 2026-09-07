@@ -55,8 +55,8 @@ namespace ArcanePuck
                     return "正在定位桌边，请面向球桌并保持头显追踪";
                 if (picoInput == null || !picoInput.HasUsableTracking)
                     return PicoXRRuntime.IsEditorMousePreview ? "请将鼠标移入游戏窗口" : "请让主手手柄进入追踪范围";
-                if (PicoXRRuntime.IsEditorMousePreview)
-                    return "鼠标移动球槌 · 按住左键蓄力 · Esc 暂停";
+                if (PicoXRRuntime.IsEditorMousePreview || PicoXRRuntime.IsEmulator)
+                    return "鼠标移动球槌 · 左键点击 / 蓄力 · Esc 暂停";
                 return Snapshot.Phase == MatchPhase.Paused
                     ? "自然握住手柄，确认继续即可重新校准"
                     : "自然握住手柄，确认开始即可校准球槌";
@@ -430,6 +430,11 @@ namespace ArcanePuck
         {
             if (picoInput == null || rules == null) return;
 
+            if (hud != null && PicoXRRuntime.IsEmulator)
+            {
+                var available = picoInput.TryGetEmulatorMenuPointer(out var ray, out var pressed);
+                hud.HandlePicoPointer(ray, pressed, available);
+            }
             var navigation = picoInput.ConsumeMenuNavigation();
             var confirm = picoInput.ConsumeStartRequest();
             if (rules.Snapshot.Phase is MatchPhase.Idle or MatchPhase.Paused or MatchPhase.Finished)

@@ -9,6 +9,32 @@ namespace ArcanePuck.Tests
         [SetUp] public void SetUp() => config = TableConfig.CreateRuntimeDefault();
         [TearDown] public void TearDown() => Object.DestroyImmediate(config);
 
+        [TestCase(-0.4f, -1.1f)]
+        [TestCase(0.4f, -0.65f)]
+        [TestCase(10f, 10f)]
+        public void PointerAim_UsesBothAxesAndClampsInsidePlayerHalf(float x, float z)
+        {
+            var table = new GameObject("Transformed table").transform;
+            try
+            {
+                table.SetPositionAndRotation(new Vector3(3f, .82f, -4f), Quaternion.Euler(0f, 35f, 0f));
+                var origin = table.TransformPoint(new Vector3(0f, .83f, -2.25f));
+                var aimed = table.TransformPoint(new Vector3(x, 0f, z));
+                Assert.That(VRMalletMapping.TryProjectPointer(new Ray(origin, aimed - origin), table,
+                    config, out var target), Is.True);
+                Assert.That(Vector3.Distance(target, config.ClampMalletTarget(new Vector3(x, 0f, z), true)),
+                    Is.LessThan(.0001f));
+            }
+            finally { Object.DestroyImmediate(table.gameObject); }
+        }
+
+        [Test]
+        public void PointerAboveHorizon_DoesNotTeleportMallet()
+        {
+            Assert.That(VRMalletMapping.TryProjectPointer(new Ray(Vector3.up, Vector3.up), null,
+                config, out _), Is.False);
+        }
+
         [TestCase(2f, .2f)]
         [TestCase(2.5f, .25f)]
         [TestCase(3f, .3f)]

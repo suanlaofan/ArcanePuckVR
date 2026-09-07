@@ -99,6 +99,34 @@ namespace ArcanePuck.Tests
             Assert.That(input.HasUsableTracking, Is.True);
         }
 
+        [UnityTest]
+        public IEnumerator VirtualControllerRay_ClicksSettingsAndStart_AndCancelsOutsideRelease()
+        {
+            var hud = Object.FindAnyObjectByType<GameHUD>();
+            var gain = FindButton("球槌灵敏度");
+            var ray = ButtonRay(gain);
+            hud.HandlePicoPointer(ray, false);
+            hud.HandlePicoPointer(ray, true);
+            hud.HandlePicoPointer(new Ray(Camera.main.transform.position, Vector3.up), false);
+            Assert.That(PicoXRRuntime.Controls.GainX, Is.EqualTo(2.5f));
+            hud.HandlePicoPointer(ray, true);
+            hud.HandlePicoPointer(ray, false);
+            Assert.That(PicoXRRuntime.Controls.GainX, Is.EqualTo(3f));
+            hud.HandlePicoPointer(ray, false);
+            Assert.That(PicoXRRuntime.Controls.GainX, Is.EqualTo(3f), "Release must click only once.");
+            ray = ButtonRay(FindButton("开始对局"));
+            hud.HandlePicoPointer(ray, true);
+            hud.HandlePicoPointer(ray, false);
+            yield return WaitFor(() => match.Snapshot.Phase == MatchPhase.Playing);
+        }
+
+        private static Ray ButtonRay(Button button)
+        {
+            var rect = button.GetComponent<RectTransform>();
+            var origin = Camera.main.transform.position;
+            return new Ray(origin, rect.TransformPoint(rect.rect.center) - origin);
+        }
+
         private Vector3 LocalPosition => match.Config.ToTablePosition(player.transform.parent, body.position);
 
         private Vector2 TableScreenPoint(Vector3 local)

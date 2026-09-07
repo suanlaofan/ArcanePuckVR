@@ -57,9 +57,8 @@ namespace ArcanePuck
         private static float nextEmulatorProbeTime;
 
         /// <summary>
-        /// The PICO Android emulator advertises its Android Build.PRODUCT with an
-        /// "emulator" suffix. SystemInfo.deviceModel intentionally remains a PICO
-        /// model name, so it cannot distinguish host-pointer input from a headset.
+        /// Uses Android build identity rather than the marketing device name.
+        /// New PICO emulator images share PRODUCT with the real headset.
         /// </summary>
         public static bool IsEmulator
         {
@@ -71,12 +70,16 @@ namespace ArcanePuck
 
                 try
                 {
-                    var product = PXR_Plugin.System.UPxr_GetProductName();
+                    using var build = new AndroidJavaClass("android.os.Build");
+                    var product = build.GetStatic<string>("PRODUCT");
+                    var hardware = build.GetStatic<string>("HARDWARE");
+                    var fingerprint = build.GetStatic<string>("FINGERPRINT");
                     nextEmulatorProbeTime = Time.realtimeSinceStartup + 0.5f;
-                    if (!string.IsNullOrEmpty(product))
+                    if (!string.IsNullOrEmpty(product) && !string.IsNullOrEmpty(hardware))
                     {
-                        isEmulator = product.IndexOf("emulator", System.StringComparison.OrdinalIgnoreCase) >= 0;
+                        isEmulator = IsEmulatorIdentity(product, hardware, fingerprint);
                         isEmulatorResolved = true;
+                        Debug.Log($"Arcane Puck platform: emulator={isEmulator}, product={product}, hardware={hardware}.");
                     }
                 }
                 catch
@@ -89,6 +92,18 @@ namespace ArcanePuck
                 return isEmulator;
             }
         }
+
+        // PICO 0.13 reports PRODUCT=swan_oversea on newer images. Its
+        // FINGERPRINT still identifies the emulator and HARDWARE is ranchu.
+        public static bool IsEmulatorIdentity(string product, string hardware, string fingerprint)
+        {
+            return ContainsEmulator(product) || ContainsEmulator(fingerprint) ||
+                   string.Equals(hardware, "ranchu", System.StringComparison.OrdinalIgnoreCase) ||
+                   string.Equals(hardware, "goldfish", System.StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool ContainsEmulator(string value) =>
+            !string.IsNullOrEmpty(value) && value.IndexOf("emulator", System.StringComparison.OrdinalIgnoreCase) >= 0;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetRuntimeState()

@@ -53,6 +53,9 @@ namespace ArcanePuck
         private readonly Dictionary<Button, Action<int>> vrAdjustments = new();
         private readonly List<(Text label, Func<string> value)> vrSettingLabels = new();
         private int vrSelection;
+        private Button pointerPressedButton;
+        private bool pointerWasPressed;
+        private RectTransform pointerReticle;
 
         public string ScoreText => scoreLabel != null ? scoreLabel.text : string.Empty;
         public string StatusLineText => statusLabel != null ? statusLabel.text : string.Empty;
@@ -148,6 +151,50 @@ namespace ArcanePuck
             }
         }
 
+        public void HandlePicoPointer(Ray ray, bool pressed, bool available = true)
+        {
+            if (!PicoXRRuntime.IsRunning || canvas == null || view == GameView.Playing || !available)
+            {
+                pointerPressedButton = null;
+                pointerWasPressed = pressed;
+                if (pointerReticle != null) pointerReticle.gameObject.SetActive(false);
+                return;
+            }
+            Button hovered = null;
+            var plane = new Plane(canvas.transform.forward, canvas.transform.position);
+            var hit = plane.Raycast(ray, out var distance);
+            var point = hit ? ray.GetPoint(distance) : Vector3.zero;
+            if (hit)
+            {
+                foreach (var button in vrMenuButtons)
+                {
+                    if (button == null || !button.isActiveAndEnabled || !button.interactable) continue;
+                    var rect = button.GetComponent<RectTransform>();
+                    if (rect.rect.Contains(rect.InverseTransformPoint(point)))
+                    {
+                        hovered = button;
+                        var index = vrMenuButtons.IndexOf(button);
+                        if (vrSelection != index) { vrSelection = index; FocusVRSelection(); }
+                        break;
+                    }
+                }
+            }
+            if (pointerReticle != null)
+            {
+                pointerReticle.gameObject.SetActive(hit && ((RectTransform)canvas.transform).rect.Contains(
+                    canvas.transform.InverseTransformPoint(point)));
+                pointerReticle.position = point;
+                pointerReticle.SetAsLastSibling();
+            }
+            if (pressed && !pointerWasPressed) pointerPressedButton = hovered;
+            var clicked = !pressed && pointerWasPressed && hovered != null && hovered == pointerPressedButton
+                ? hovered : null;
+            pointerWasPressed = pressed;
+            if (!pressed) pointerPressedButton = null;
+            // Clear the press state before invoking: the callback may rebuild the menu.
+            if (clicked != null) clicked.onClick.Invoke();
+        }
+
         private void BuildCanvas()
         {
             if (canvas != null)
@@ -204,6 +251,9 @@ namespace ArcanePuck
             vrAdjustments.Clear();
             vrSettingLabels.Clear();
             vrSelection = 0;
+            pointerPressedButton = null;
+            if (pointerReticle != null) Destroy(pointerReticle.gameObject);
+            pointerReticle = null;
 
             menuLayer = new GameObject("Menu Layer", typeof(RectTransform));
             menuLayer.transform.SetParent(canvas.transform, false);
@@ -245,6 +295,14 @@ namespace ArcanePuck
                 {
                     var shader = Resources.Load<Shader>("VRUIOverlay");
                     if (shader != null) vrOverlayMaterial = new Material(shader);
+                }
+                if (view != GameView.Playing)
+                {
+                    pointerReticle = AddFlatRect(canvas.transform, "Emulator Pointer", new Vector2(0.5f, 0.5f),
+                        Vector2.zero, new Vector2(10f, 10f), Cyan);
+                    pointerReticle.GetComponent<Image>().raycastTarget = false;
+                    pointerReticle.localRotation = Quaternion.Euler(0f, 0f, 45f);
+                    pointerReticle.gameObject.SetActive(false);
                 }
                 if (vrOverlayMaterial != null)
                     foreach (var graphic in canvas.GetComponentsInChildren<Graphic>(true))

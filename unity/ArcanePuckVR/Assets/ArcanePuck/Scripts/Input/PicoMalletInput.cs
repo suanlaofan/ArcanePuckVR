@@ -58,6 +58,9 @@ namespace ArcanePuck
         private bool emulatorMouseObserved;
         private float mouseActivityUntil;
         private InputSource activeSource;
+#if DEVELOPMENT_BUILD
+        private float nextInputDiagnostic;
+#endif
         private InputDeviceCharacteristics activeControllerHand;
 
         // PICO Emulator reports its controller pose from a 2D desktop interaction.
@@ -130,6 +133,16 @@ namespace ArcanePuck
             }
 
             UpdateTrackingAvailability(source, hasTrackedController, controllerPosition, sourceChanged);
+#if DEVELOPMENT_BUILD
+            if (PicoXRRuntime.IsEmulator && Time.unscaledTime >= nextInputDiagnostic)
+            {
+                nextInputDiagnostic = Time.unscaledTime + 3f;
+                var pointer = mouse != null ? mouse.position.ReadValue() : Vector2.zero;
+                controller.TryGetFeatureValue(XRCommonUsages.deviceRotation, out var aim);
+                controller.TryGetFeatureValue(XRCommonUsages.triggerButton, out var triggerDown);
+                Debug.Log($"Arcane Puck emulator input: source={source}, tracked={hasTrackedController}, pose={controllerPosition:F3}, aim={aim.eulerAngles:F1}, trigger={triggerDown}, mouse={pointer:F1}, usable={hasUsableTracking}, target={target:F3}.");
+            }
+#endif
             if (!inputEnabled || !hasUsableTracking) return;
 
             if (source == InputSource.TrackedController && hasTrackedController)
@@ -302,6 +315,29 @@ namespace ArcanePuck
             hasUsableTracking = usable;
         }
 
+        public bool TryGetEmulatorMenuPointer(out Ray ray, out bool pressed)
+        {
+            ray = default;
+            pressed = false;
+            if (!PicoXRRuntime.IsEmulator || emulatorMouseObserved ||
+                !TryGetTrackedController(out var position) || !TryCreateControllerRay(position, out ray)) return false;
+            controller.TryGetFeatureValue(XRCommonUsages.triggerButton, out pressed);
+            if (!pressed && controller.TryGetFeatureValue(XRCommonUsages.trigger, out var trigger))
+                pressed = trigger > 0.5f;
+            return true;
+        }
+
+        private bool TryCreateControllerRay(Vector3 position, out Ray ray)
+        {
+            ray = default;
+            if (!controller.TryGetFeatureValue(XRCommonUsages.deviceRotation, out var rotation)) return false;
+            var origin = trackingOrigin != null ? trackingOrigin.TransformPoint(position) : position;
+            var direction = trackingOrigin != null
+                ? trackingOrigin.TransformDirection(rotation * Vector3.forward) : rotation * Vector3.forward;
+            ray = new Ray(origin, direction);
+            return true;
+        }
+
         private bool TryGetTrackedController(out Vector3 controllerPosition)
         {
 #if UNITY_EDITOR
@@ -422,6 +458,17 @@ namespace ArcanePuck
         {
             if (PicoXRRuntime.IsEmulator)
             {
+                // Current PICO images expose the host pointer as controller aim,
+                // with position fixed near the eye. Project that aim onto the table.
+                if (TryCreateControllerRay(controllerPosition, out var pointerRay) &&
+                    VRMalletMapping.TryProjectPointer(pointerRay, tableSpace, config, out var pointerTarget))
+                {
+                    target = pointerTarget;
+                    hasEmulatorPoseAnchor = false;
+                    return;
+                }
+                // Older images expose translation rather than aim. Retain their
+                // XY path if no forward table intersection is available.
                 // Android's emulator maps desktop horizontal/vertical controller
                 // motion into X/Y. Turn that relative 2D motion into the table's
                 // X/Z plane when no raw mouse pointer is available.

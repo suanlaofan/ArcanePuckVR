@@ -6,6 +6,18 @@ namespace ArcanePuck.Tests
 {
     public sealed class VRCalibrationTests
     {
+        [TestCase("swan_oversea", "ranchu", "Pico/swan/pico_spaceos_oversea_emulator_arm64:16", true)]
+        [TestCase("swan_oversea", "ranchu", "", true)]
+        [TestCase("old_emulator_arm64", "", "", true)]
+        [TestCase("swan_oversea", "qcom", "Pico/swan/pico_emulator_arm64:16", true)]
+        [TestCase("swan_oversea", "qcom", "Pico/swan/device:16", false)]
+        [TestCase(null, null, null, false)]
+        public void EmulatorIdentity_DistinguishesCurrentImageFromHeadset(string product, string hardware,
+            string fingerprint, bool expected)
+        {
+            Assert.That(PicoXRRuntime.IsEmulatorIdentity(product, hardware, fingerprint), Is.EqualTo(expected));
+        }
+
         [Test]
         public void OffsetHead_IsPlacedExactlyAtNearEdgeDistance()
         {
