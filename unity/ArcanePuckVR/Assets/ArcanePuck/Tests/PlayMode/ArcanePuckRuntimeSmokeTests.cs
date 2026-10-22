@@ -77,7 +77,7 @@ namespace ArcanePuck.Tests
             match.SetScoreForTesting(match.Config.goldenGoalAt, match.Config.goldenGoalAt);
             Assert.That(match.GoldenGoal, Is.True);
             Assert.That(hud.ScoreText, Does.Contain("6"));
-            Assert.That(hud.ScoreText, Does.Contain("金球加时"));
+            Assert.That(hud.ScoreText, Does.Contain("Golden Goal"));
 
             var positionAtScoreEvent = Vector3.zero;
             match.ScoreAwarded += (_, _) => positionAtScoreEvent = puck.Body.position;

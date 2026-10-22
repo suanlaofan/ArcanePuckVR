@@ -25,7 +25,7 @@ namespace ArcanePuck
         private Camera observationCamera;
         private Transform tableRoot;
         private GameHUD hud;
-        private string statusText = "选择 AI 难度开始对局";
+        private string statusText = "Choose an AI difficulty to begin";
         private int lastDisplayedChargePercent = -1;
         private PicoMalletInput picoInput;
 
@@ -52,14 +52,14 @@ namespace ArcanePuck
                 if (!PicoXRRuntime.IsRunning) return string.Empty;
                 if (PicoXRRuntime.Calibration == null || PicoXRRuntime.Calibration.IsCalibrating ||
                     !PicoXRRuntime.Calibration.IsReady)
-                    return "正在定位桌边，请面向球桌并保持头显追踪";
+                    return "Locating the table edge. Face the table and keep the headset tracked";
                 if (picoInput == null || !picoInput.HasUsableTracking)
-                    return PicoXRRuntime.IsEditorMousePreview ? "请将鼠标移入游戏窗口" : "请让主手手柄进入追踪范围";
+                    return PicoXRRuntime.IsEditorMousePreview ? "Move the mouse into the game window" : "Bring your main-hand controller into tracking range";
                 if (PicoXRRuntime.IsEditorMousePreview || PicoXRRuntime.IsEmulator)
-                    return "鼠标移动球槌 · 左键点击 / 蓄力 · Esc 暂停";
+                    return "Mouse moves mallet · Left click / hold to charge · Esc to pause";
                 return Snapshot.Phase == MatchPhase.Paused
-                    ? "自然握住手柄，确认继续即可重新校准"
-                    : "自然握住手柄，确认开始即可校准球槌";
+                    ? "Hold the controller naturally, then confirm to recalibrate and resume"
+                    : "Hold the controller naturally, then confirm to calibrate and start";
             }
         }
 
@@ -140,7 +140,7 @@ namespace ArcanePuck
             Initialize(tableConfig, puckController, playerController, input, aiController);
             playerGoal?.Initialize(config, puck, this, MatchSide.Player, tableRoot);
             aiGoal?.Initialize(config, puck, this, MatchSide.AI, tableRoot);
-            statusText = "选择 AI 难度开始对局";
+            statusText = "Choose an AI difficulty to begin";
             AlignBodiesToTable();
         }
 
@@ -211,7 +211,7 @@ namespace ArcanePuck
             rules.StartMatch();
             ResetRoundForServe();
             CalibrateVRHand(true);
-            statusText = $"{DifficultyLabel} AI 已就位，准备发球";
+            statusText = $"{DifficultyLabel} AI ready · Get set";
             hud?.ShowPlaying();
             PublishState();
         }
@@ -230,7 +230,7 @@ namespace ArcanePuck
             rules.RestartMatch();
             ResetRoundForServe();
             CalibrateVRHand(true);
-            statusText = "新的决斗开始";
+            statusText = "A new duel begins";
             hud?.ShowPlaying();
             PublishState();
         }
@@ -249,7 +249,7 @@ namespace ArcanePuck
 
             rules.ReturnToIdle();
             ResetRoundForServe();
-            statusText = "选择 AI 难度开始对局";
+            statusText = "Choose an AI difficulty to begin";
             hud?.ShowMenu();
             PublishState();
         }
@@ -281,7 +281,7 @@ namespace ArcanePuck
             PausePhysicalState();
             SetControllersActive(false);
             if (picoInput != null) playerMallet?.ClearPendingMotion();
-            statusText = "决斗已暂停";
+            statusText = "Duel paused";
             hud?.ShowPaused();
             PublishState();
         }
@@ -311,10 +311,10 @@ namespace ArcanePuck
             }
 
             statusText = rules.Snapshot.Phase == MatchPhase.Serving
-                ? "准备发球"
+                ? "Get ready to serve"
                 : PicoXRRuntime.IsRunning && !PicoXRRuntime.IsEditorMousePreview
-                    ? "挥动主手球槌，按住扳机蓄力"
-                    : "鼠标移动击槌，按住左键蓄力";
+                    ? "Swing your mallet · Hold trigger to charge"
+                    : "Move mallet · Hold left click to charge";
             hud?.ShowPlaying();
             PublishState();
         }
@@ -327,7 +327,7 @@ namespace ArcanePuck
             }
 
             ResetRoundForServe();
-            statusText = "圆盘已回到中线";
+            statusText = "Puck reset to the center line";
             PublishState();
         }
 
@@ -355,7 +355,7 @@ namespace ArcanePuck
                 return;
             }
 
-            statusText = result.Scorer == MatchSide.Player ? "你得分了" : "AI 巫师得分";
+            statusText = result.Scorer == MatchSide.Player ? "You scored!" : "The AI wizard scored";
             ScoreAwarded?.Invoke(result.Scorer, result.WasGoldenGoal);
             ResetRoundForServe();
             PublishState();
@@ -463,7 +463,7 @@ namespace ArcanePuck
             PauseMatch();
             playerMallet?.ClearPendingMotion();
             var requested = PicoXRRuntime.Calibration.RequestRecenter();
-            statusText = requested ? "正在重新定位，请面向球桌" : "等待头显追踪后重新定位";
+            statusText = requested ? "Recentering. Please face the table" : "Waiting for headset tracking to recenter";
             PublishState();
         }
 
@@ -505,8 +505,8 @@ namespace ArcanePuck
 
             PauseMatch();
             statusText = pauseForPosition
-                ? "定位已改变，完成定位后确认继续"
-                : "主手追踪已中断，恢复后确认继续";
+                ? "Position changed. Recenter, then confirm to resume"
+                : "Main-hand tracking lost. Confirm to resume once restored";
             PublishState();
         }
 
@@ -571,8 +571,8 @@ namespace ArcanePuck
 
             SetControllersActive(true);
             statusText = toward == MatchSide.AI
-                ? "圆盘向 AI 半场发出"
-                : "防守：圆盘向你的半场发出";
+                ? "Puck served to the AI side"
+                : "Defend! Puck served to your side";
             ServeStarted?.Invoke(toward);
         }
 

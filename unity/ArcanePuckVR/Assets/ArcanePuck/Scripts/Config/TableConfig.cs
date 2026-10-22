@@ -101,11 +101,11 @@ namespace ArcanePuck
 
         [Header("AI")]
         public AITuning apprentice = new(
-            "学徒", 0.28f, 1.45f, 0.2f, 0.14f, 0.67f, 0.42f, 0.04f);
+            "Apprentice", 0.28f, 1.45f, 0.2f, 0.14f, 0.67f, 0.42f, 0.04f);
         public AITuning mage = new(
-            "法师", 0.12f, 2.05f, 0.075f, 0.48f, 0.61f, 0.67f, 0.16f);
+            "Mage", 0.12f, 2.05f, 0.075f, 0.48f, 0.61f, 0.67f, 0.16f);
         public AITuning archmage = new(
-            "大法师", 0.055f, 2.7f, 0.025f, 0.92f, 0.57f, 0.88f, 0.48f);
+            "Archmage", 0.055f, 2.7f, 0.025f, 0.92f, 0.57f, 0.88f, 0.48f);
 
         public float FixedDeltaTime => 1f / fixedStepsPerSecond;
         public float HalfWidth => width * 0.5f;

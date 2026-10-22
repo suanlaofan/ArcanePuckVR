@@ -89,12 +89,12 @@ namespace ArcanePuck.Tests
         public IEnumerator MouseClicks_AdjustSensitivityAndStartFromVRMenu()
         {
             Assert.That(PicoXRRuntime.Controls.GainX, Is.EqualTo(2.5f));
-            yield return ClickButton("球槌灵敏度");
+            yield return ClickButton("Mallet Sensitivity");
             Assert.That(PicoXRRuntime.Controls.GainX, Is.EqualTo(3f));
             Assert.That(match.Snapshot.Phase, Is.EqualTo(MatchPhase.Idle));
-            Assert.That(FindButton("距桌边距离"), Is.Not.Null);
-            Assert.That(FindButton("游玩姿势"), Is.Not.Null);
-            yield return ClickButton("开始对局");
+            Assert.That(FindButton("Table Distance"), Is.Not.Null);
+            Assert.That(FindButton("Play Stance"), Is.Not.Null);
+            yield return ClickButton("Start Match");
             yield return WaitFor(() => match.Snapshot.Phase == MatchPhase.Playing);
             Assert.That(input.HasUsableTracking, Is.True);
         }
@@ -103,7 +103,7 @@ namespace ArcanePuck.Tests
         public IEnumerator VirtualControllerRay_ClicksSettingsAndStart_AndCancelsOutsideRelease()
         {
             var hud = Object.FindAnyObjectByType<GameHUD>();
-            var gain = FindButton("球槌灵敏度");
+            var gain = FindButton("Mallet Sensitivity");
             var ray = ButtonRay(gain);
             hud.HandlePicoPointer(ray, false);
             hud.HandlePicoPointer(ray, true);
@@ -114,7 +114,7 @@ namespace ArcanePuck.Tests
             Assert.That(PicoXRRuntime.Controls.GainX, Is.EqualTo(3f));
             hud.HandlePicoPointer(ray, false);
             Assert.That(PicoXRRuntime.Controls.GainX, Is.EqualTo(3f), "Release must click only once.");
-            ray = ButtonRay(FindButton("开始对局"));
+            ray = ButtonRay(FindButton("Start Match"));
             hud.HandlePicoPointer(ray, true);
             hud.HandlePicoPointer(ray, false);
             yield return WaitFor(() => match.Snapshot.Phase == MatchPhase.Playing);

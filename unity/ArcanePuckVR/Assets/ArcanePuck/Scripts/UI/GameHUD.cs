@@ -324,15 +324,15 @@ namespace ArcanePuck
             AddSideVignettes(menuLayer.transform, 0.12f);
             AddBrand(menuLayer.transform, 258f);
 
-            AddButton(menuLayer.transform, "开始游戏", new Vector2(0f, 12f), match.OpenDifficultySelection,
+            AddButton(menuLayer.transform, "Start Game", new Vector2(0f, 12f), match.OpenDifficultySelection,
                 Gold, new Vector2(340f, 58f), 24);
-            AddButton(menuLayer.transform, "退出游戏", new Vector2(0f, -70f), QuitApplication,
+            AddButton(menuLayer.transform, "Quit Game", new Vector2(0f, -70f), QuitApplication,
                 new Color(0.52f, 0.42f, 0.72f), new Vector2(340f, 50f), 20);
 
             AddDivider(menuLayer.transform, -144f, 280f, new Color(Gold.r, Gold.g, Gold.b, 0.58f));
             AddLabel(menuLayer.transform, PicoXRRuntime.IsRunning
-                    ? "主按键开始对局  ·  副按键暂停  ·  移动主手球槌  ·  扳机蓄力"
-                    : "右键调整视角  ·  WASD 移动  ·  鼠标移动球槌  ·  按住左键蓄力",
+                    ? "Primary button: start  ·  Secondary button: pause  ·  Move mallet with main hand  ·  Trigger: charge"
+                    : "Right-drag to look  ·  WASD to move  ·  Mouse moves mallet  ·  Hold left click to charge",
                 16, new Color(0.78f, 0.80f, 0.96f, 0.84f), 0f, -188f, new Vector2(900f, 38f));
         }
 
@@ -349,14 +349,14 @@ namespace ArcanePuck
                 Violet, VioletGlass, 2f);
             panel.anchoredPosition = new Vector2(0f, -16f);
 
-            AddLabel(panel, "选择 AI 对手", 45, Color.white, 0f, 237f, new Vector2(520f, 64f), FontStyle.Bold);
+            AddLabel(panel, "Choose AI Rival", 45, Color.white, 0f, 237f, new Vector2(520f, 64f), FontStyle.Bold);
             AddLabel(panel, "SELECT YOUR ARCANE RIVAL", 15, Gold, 0f, 190f, new Vector2(520f, 30f));
             AddDivider(panel, 160f, 330f, new Color(Gold.r, Gold.g, Gold.b, 0.7f));
 
-            AddDifficulty(panel, "学徒", "反应慢 · 速度低 · 失误更多", DifficultyId.Apprentice, 82f, Cyan);
-            AddDifficulty(panel, "法师", "攻守均衡 · 基础预判与射门", DifficultyId.Mage, -26f, Gold);
-            AddDifficulty(panel, "大法师", "反应迅捷 · 尝试借边进攻", DifficultyId.Archmage, -134f, Violet);
-            AddButton(panel, "返回", new Vector2(0f, -243f), match.ReturnToMenu,
+            AddDifficulty(panel, "Apprentice", "Slow reactions · Low speed · More mistakes", DifficultyId.Apprentice, 82f, Cyan);
+            AddDifficulty(panel, "Mage", "Balanced play · Basic reads and shots", DifficultyId.Mage, -26f, Gold);
+            AddDifficulty(panel, "Archmage", "Quick reactions · Tries bank shots", DifficultyId.Archmage, -134f, Violet);
+            AddButton(panel, "Back", new Vector2(0f, -243f), match.ReturnToMenu,
                 new Color(0.53f, 0.47f, 0.73f), new Vector2(300f, 48f), 19);
         }
 
@@ -372,14 +372,14 @@ namespace ArcanePuck
             var panel = CreateFramedPanel(menuLayer.transform, "Pause Panel", new Vector2(500f, 492f),
                 Violet, VioletGlass, 2f);
 
-            AddLabel(panel, "时间凝滞", 46, Color.white, 0f, 140f, new Vector2(440f, 62f), FontStyle.Bold);
+            AddLabel(panel, "Time Frozen", 46, Color.white, 0f, 140f, new Vector2(440f, 62f), FontStyle.Bold);
             AddLabel(panel, "ARCANE DUEL PAUSED", 15, Gold, 0f, 92f, new Vector2(440f, 28f));
             AddDivider(panel, 58f, 276f, new Color(Gold.r, Gold.g, Gold.b, 0.68f));
-            AddButton(panel, "继续对局", new Vector2(0f, -10f), match.ResumeMatch,
+            AddButton(panel, "Resume", new Vector2(0f, -10f), match.ResumeMatch,
                 Cyan, new Vector2(330f, 54f), 22);
-            AddButton(panel, "重新开始", new Vector2(0f, -84f), match.RestartMatch,
+            AddButton(panel, "Restart", new Vector2(0f, -84f), match.RestartMatch,
                 Gold, new Vector2(330f, 50f), 20);
-            AddButton(panel, "返回主页", new Vector2(0f, -157f), match.ReturnToMenu,
+            AddButton(panel, "Main Menu", new Vector2(0f, -157f), match.ReturnToMenu,
                 new Color(0.53f, 0.47f, 0.73f), new Vector2(330f, 48f), 19);
         }
 
@@ -400,21 +400,21 @@ namespace ArcanePuck
             var panel = CreateFramedPanel(menuLayer.transform, "Duel Result", new Vector2(520f, 570f), accent, fill, 2f);
             panel.anchoredPosition = new Vector2(0f, -10f);
 
-            AddLabel(panel, "决斗结果", 17, accent, 0f, 208f, new Vector2(440f, 34f));
-            AddLabel(panel, playerWon ? "你获得了胜利！" : "AI巫师获胜", 44, Color.white, 0f, 145f,
+            AddLabel(panel, "Duel Result", 17, accent, 0f, 208f, new Vector2(440f, 34f));
+            AddLabel(panel, playerWon ? "Victory!" : "AI Wizard Wins", 44, Color.white, 0f, 145f,
                 new Vector2(480f, 68f), FontStyle.Bold);
             AddLabel(panel,
-                playerWon ? "魔法飞盘竞技场为你见证荣耀" : "下一次飞盘会为你带来胜利",
+                playerWon ? "The arcane arena hails your glory" : "Victory awaits in the next duel",
                 17, new Color(0.87f, 0.87f, 0.98f, 0.9f), 0f, 95f, new Vector2(450f, 34f));
             AddDivider(panel, 58f, 292f, new Color(accent.r, accent.g, accent.b, 0.72f));
 
             var score = $"<color=#{ToHex(Cyan)}>{match?.PlayerScore ?? 0}</color>  <color=#EEE7FF>:</color>  <color=#{ToHex(Gold)}>{match?.AIScore ?? 0}</color>";
             AddRichLabel(panel, score, 58, Color.white, 0f, -2f, new Vector2(410f, 80f), FontStyle.Bold);
-            AddLabel(panel, match != null && match.GoldenGoal ? "金球加时 · 一击定胜负" : "本轮决斗已结束", 15,
+            AddLabel(panel, match != null && match.GoldenGoal ? "Golden Goal · Next goal wins" : "This duel has ended", 15,
                 new Color(0.84f, 0.83f, 0.96f, 0.9f), 0f, -56f, new Vector2(420f, 28f));
-            AddButton(panel, "再来一局", new Vector2(0f, -126f), match.RestartMatch,
+            AddButton(panel, "Play Again", new Vector2(0f, -126f), match.RestartMatch,
                 accent, new Vector2(330f, 52f), 21);
-            AddButton(panel, "返回主页", new Vector2(0f, -199f), match.ReturnToMenu,
+            AddButton(panel, "Main Menu", new Vector2(0f, -199f), match.ReturnToMenu,
                 new Color(0.53f, 0.47f, 0.73f), new Vector2(330f, 48f), 19);
         }
 
@@ -473,38 +473,38 @@ namespace ArcanePuck
             AddFullscreenTint(menuLayer.transform, new Color(0.008f, 0.004f, 0.035f, 0.38f));
             var panel = CreateFramedPanel(menuLayer.transform, paused ? "VR Pause Settings" : "VR Start Settings",
                 new Vector2(850f, 540f), Violet, VioletGlass, 2f);
-            AddLabel(panel, paused ? "对局已暂停" : "奥术飞盘", 40, Gold, 0f, 221f,
+            AddLabel(panel, paused ? "Match Paused" : "Arcane Puck VR", 40, Gold, 0f, 221f,
                 new Vector2(750f, 52f), FontStyle.Bold);
 
             if (paused)
             {
-                AddButton(panel, "继续对局", new Vector2(-250f, 160f), match.ResumeMatch,
+                AddButton(panel, "Resume", new Vector2(-250f, 160f), match.ResumeMatch,
                     Cyan, new Vector2(230f, 48f), 22);
-                AddButton(panel, "重新开始", new Vector2(0f, 160f), match.RestartMatch,
+                AddButton(panel, "Restart", new Vector2(0f, 160f), match.RestartMatch,
                     Gold, new Vector2(230f, 48f), 22);
-                AddButton(panel, "返回主页", new Vector2(250f, 160f), match.ReturnToMenu,
+                AddButton(panel, "Main Menu", new Vector2(250f, 160f), match.ReturnToMenu,
                     Violet, new Vector2(230f, 48f), 22);
             }
             else
             {
-                AddButton(panel, "开始对局 · 法师", new Vector2(-190f, 160f), () => match.StartMatch(DifficultyId.Mage),
+                AddButton(panel, "Start Match · Mage", new Vector2(-190f, 160f), () => match.StartMatch(DifficultyId.Mage),
                     Gold, new Vector2(360f, 48f), 22);
-                AddButton(panel, "选择 AI 难度", new Vector2(190f, 160f), match.OpenDifficultySelection,
+                AddButton(panel, "Choose AI Difficulty", new Vector2(190f, 160f), match.OpenDifficultySelection,
                     Cyan, new Vector2(360f, 48f), 22);
             }
 
             AddVRSetting(panel, 96f, () =>
             {
                 var controls = PicoXRRuntime.Controls;
-                var names = new[] { "低", "标准", "高" };
-                return $"球槌灵敏度    ‹  {names[Mathf.Clamp(controls.SensitivityPreset, 0, 2)]}  {controls.GainX:0.0} 倍  ›";
+                var names = new[] { "Low", "Standard", "High" };
+                return $"Mallet Sensitivity    ‹  {names[Mathf.Clamp(controls.SensitivityPreset, 0, 2)]}  {controls.GainX:0.0}x  ›";
             }, direction =>
             {
                 var controls = PicoXRRuntime.Controls;
                 controls.SetSensitivityPreset((controls.SensitivityPreset + direction + 3) % 3);
             });
             AddVRSetting(panel, 48f,
-                () => $"距桌边距离    ‹  {PicoXRRuntime.Controls.StartDistance:0.00} 米  ›",
+                () => $"Table Distance    ‹  {PicoXRRuntime.Controls.StartDistance:0.00} m  ›",
                 direction =>
                 {
                     if (PicoXRRuntime.Calibration == null || PicoXRRuntime.Calibration.IsCalibrating) return;
@@ -517,24 +517,24 @@ namespace ArcanePuck
                     match.RequestVRRecenter();
                 });
             AddVRSetting(panel, 0f,
-                () => $"主手    ‹  {(PicoXRRuntime.Controls.LeftHanded ? "左手" : "右手")}  ›",
+                () => $"Main Hand    ‹  {(PicoXRRuntime.Controls.LeftHanded ? "Left" : "Right")}  ›",
                 _ => PicoXRRuntime.Controls.SetLeftHanded(!PicoXRRuntime.Controls.LeftHanded));
             AddVRSetting(panel, -48f,
-                () => $"游玩姿势    ‹  {(PicoXRRuntime.Controls.Seated ? "坐姿" : "站姿")}  ›",
+                () => $"Play Stance    ‹  {(PicoXRRuntime.Controls.Seated ? "Seated" : "Standing")}  ›",
                 _ =>
                 {
                     if (PicoXRRuntime.Calibration == null || PicoXRRuntime.Calibration.IsCalibrating) return;
                     PicoXRRuntime.Controls.SetSeated(!PicoXRRuntime.Controls.Seated);
                     match.RequestVRRecenter();
                 });
-            AddButton(panel, "重新定位桌边", new Vector2(0f, -96f), match.RequestVRRecenter,
+            AddButton(panel, "Recenter Table", new Vector2(0f, -96f), match.RequestVRRecenter,
                 Cyan, new Vector2(740f, 40f), 20);
 
             vrReadinessLabel = AddLabel(panel, string.Empty, 19, Gold, 0f, -152f, new Vector2(790f, 34f));
-            AddLabel(panel, PicoXRRuntime.IsEditorMousePreview ? "鼠标点击设置 · 方向键选择/调整 · Enter 确认" : "摇杆上下选择 · 左右调整 · 主按键确认", 18,
+            AddLabel(panel, PicoXRRuntime.IsEditorMousePreview ? "Click to change · Arrow keys select/adjust · Enter to confirm" : "Stick up/down: select · Left/right: adjust · Primary: confirm", 18,
                 new Color(0.87f, 0.90f, 1f), 0f, -197f, new Vector2(790f, 30f));
-            AddLabel(panel, PicoXRRuntime.IsEditorMousePreview ? "鼠标移动球槌 · 按住左键蓄力 · Esc 暂停/继续" :
-                paused ? "副按键继续 · 按住扳机蓄力" : "进入对局后，副按键暂停 · 按住扳机蓄力", 16,
+            AddLabel(panel, PicoXRRuntime.IsEditorMousePreview ? "Mouse moves mallet · Hold left click to charge · Esc: pause/resume" :
+                paused ? "Secondary: resume · Hold trigger to charge" : "In match, Secondary: pause · Hold trigger to charge", 16,
                 new Color(0.76f, 0.79f, 0.91f), 0f, -230f, new Vector2(790f, 28f));
         }
 
@@ -554,14 +554,14 @@ namespace ArcanePuck
             AddFullscreenTint(menuLayer.transform, new Color(0.008f, 0.004f, 0.035f, 0.45f));
             var panel = CreateFramedPanel(menuLayer.transform, "VR Difficulty", new Vector2(700f, 540f),
                 Violet, VioletGlass, 2f);
-            AddLabel(panel, "选择 AI 对手", 36, Gold, 0f, 215f, new Vector2(600f, 48f), FontStyle.Bold);
-            AddDifficulty(panel, "学徒", "反应慢 · 速度低 · 失误更多", DifficultyId.Apprentice, 128f, Cyan);
-            AddDifficulty(panel, "法师", "攻守均衡 · 基础预判与射门", DifficultyId.Mage, 30f, Gold);
-            AddDifficulty(panel, "大法师", "反应迅捷 · 尝试借边进攻", DifficultyId.Archmage, -68f, Violet);
-            AddButton(panel, "返回", new Vector2(0f, -149f), match.ReturnToMenu,
+            AddLabel(panel, "Choose AI Rival", 36, Gold, 0f, 215f, new Vector2(600f, 48f), FontStyle.Bold);
+            AddDifficulty(panel, "Apprentice", "Slow reactions · Low speed · More mistakes", DifficultyId.Apprentice, 128f, Cyan);
+            AddDifficulty(panel, "Mage", "Balanced play · Basic reads and shots", DifficultyId.Mage, 30f, Gold);
+            AddDifficulty(panel, "Archmage", "Quick reactions · Tries bank shots", DifficultyId.Archmage, -68f, Violet);
+            AddButton(panel, "Back", new Vector2(0f, -149f), match.ReturnToMenu,
                 Violet, new Vector2(300f, 42f), 20);
             vrReadinessLabel = AddLabel(panel, string.Empty, 18, Gold, 0f, -198f, new Vector2(650f, 30f));
-            AddLabel(panel, PicoXRRuntime.IsEditorMousePreview ? "鼠标点击难度开始 · 方向键选择 · Enter 确认" : "摇杆上下选择 · 主按键校准并开始", 17, Color.white,
+            AddLabel(panel, PicoXRRuntime.IsEditorMousePreview ? "Click a difficulty to start · Arrow keys select · Enter to confirm" : "Stick up/down: select · Primary: calibrate and start", 17, Color.white,
                 0f, -233f, new Vector2(640f, 28f));
             // The standard difficulty remains the initial selection.
             vrSelection = 1;
@@ -573,18 +573,18 @@ namespace ArcanePuck
             var playerWon = match != null && match.WinnerIsPlayer;
             var panel = CreateFramedPanel(menuLayer.transform, "VR Result", new Vector2(650f, 510f),
                 playerWon ? Gold : Cyan, VioletGlass, 2f);
-            AddLabel(panel, playerWon ? "你获得了胜利！" : "AI 巫师获胜", 39, Gold,
+            AddLabel(panel, playerWon ? "Victory!" : "AI Wizard Wins", 39, Gold,
                 0f, 173f, new Vector2(580f, 56f), FontStyle.Bold);
             AddLabel(panel, $"{match.PlayerScore}  :  {match.AIScore}", 54, Color.white,
                 0f, 86f, new Vector2(550f, 70f), FontStyle.Bold);
-            AddLabel(panel, match.GoldenGoal ? "金球加时 · 一击定胜负" : "本轮决斗已结束", 19,
+            AddLabel(panel, match.GoldenGoal ? "Golden Goal · Next goal wins" : "This duel has ended", 19,
                 Cyan, 0f, 25f, new Vector2(580f, 30f));
-            AddButton(panel, "再来一局", new Vector2(0f, -45f), match.RestartMatch,
+            AddButton(panel, "Play Again", new Vector2(0f, -45f), match.RestartMatch,
                 Gold, new Vector2(420f, 50f), 22);
-            AddButton(panel, "返回主页", new Vector2(0f, -110f), match.ReturnToMenu,
+            AddButton(panel, "Main Menu", new Vector2(0f, -110f), match.ReturnToMenu,
                 Violet, new Vector2(420f, 48f), 21);
             vrReadinessLabel = AddLabel(panel, string.Empty, 18, Gold, 0f, -172f, new Vector2(610f, 30f));
-            AddLabel(panel, PicoXRRuntime.IsEditorMousePreview ? "鼠标点击按钮 · 方向键选择 · Enter 确认" : "摇杆上下选择 · 主按键确认", 17, Color.white,
+            AddLabel(panel, PicoXRRuntime.IsEditorMousePreview ? "Click a button · Arrow keys select · Enter to confirm" : "Stick up/down: select · Primary: confirm", 17, Color.white,
                 0f, -216f, new Vector2(580f, 28f));
         }
 
@@ -637,25 +637,25 @@ namespace ArcanePuck
             }
 
             var overtime = match.GoldenGoal
-                ? $"   <size=13><color=#{ToHex(Gold)}>· 金球加时</color></size>"
+                ? $"   <size=13><color=#{ToHex(Gold)}>· Golden Goal</color></size>"
                 : string.Empty;
             if (PicoXRRuntime.IsRunning)
             {
-                scoreLabel.text = $"你  {match.PlayerScore}     ·     {match.DifficultyLabel}     ·     AI  {match.AIScore}" +
-                                  (match.GoldenGoal ? "   金球" : string.Empty);
-                statusLabel.text = $"{match.StatusText}  ·  蓄力 {Mathf.RoundToInt(match.PlayerCharge01 * 100f)}%";
+                scoreLabel.text = $"You  {match.PlayerScore}   ·   {match.DifficultyLabel}   ·   AI  {match.AIScore}" +
+                                  (match.GoldenGoal ? "   Golden Goal" : string.Empty);
+                statusLabel.text = $"{match.StatusText}  ·  Charge {Mathf.RoundToInt(match.PlayerCharge01 * 100f)}%";
                 if (chargeFill != null)
                     chargeFill.rectTransform.anchorMax = new Vector2(Mathf.Clamp01(match.PlayerCharge01), 1f);
                 return;
             }
 
             scoreLabel.text =
-                $"<color=#{ToHex(new Color(0.83f, 0.69f, 1f))}>你</color>  <size=31><color=#FFFFFF>{match.PlayerScore}</color></size>" +
+                $"<color=#{ToHex(new Color(0.83f, 0.69f, 1f))}>You</color>  <size=31><color=#FFFFFF>{match.PlayerScore}</color></size>" +
                 $"   <color=#{ToHex(Gold)}>✦</color>   <size=17><color=#{ToHex(new Color(0.92f, 0.86f, 1f))}>{match.DifficultyLabel}</color></size>" +
                 $"   <color=#{ToHex(Gold)}>✦</color>   <color=#{ToHex(Cyan)}>AI</color>  <size=31><color=#{ToHex(new Color(0.75f, 0.94f, 1f))}>{match.AIScore}</color></size>{overtime}";
 
             var charge = Mathf.RoundToInt(match.PlayerCharge01 * 100f);
-            statusLabel.text = $"{match.StatusText}   <color=#{ToHex(Cyan)}>蓄力 {charge}%</color>";
+            statusLabel.text = $"{match.StatusText}   <color=#{ToHex(Cyan)}>Charge {charge}%</color>";
             if (chargeFill != null)
             {
                 chargeFill.rectTransform.anchorMax = new Vector2(Mathf.Clamp01(match.PlayerCharge01), 1f);
@@ -664,13 +664,13 @@ namespace ArcanePuck
 
         private void AddBrand(Transform parent, float y)
         {
-            AddLabel(parent, "奥术飞盘", 72, new Color(0.12f, 0.065f, 0.03f, 0.92f), 3f, y - 4f,
+            AddLabel(parent, "Arcane Puck VR", 72, new Color(0.12f, 0.065f, 0.03f, 0.92f), 3f, y - 4f,
                 new Vector2(760f, 100f), FontStyle.Bold);
-            var title = AddLabel(parent, "奥术飞盘", 72, Gold, 0f, y, new Vector2(760f, 100f), FontStyle.Bold);
+            var title = AddLabel(parent, "Arcane Puck VR", 72, Gold, 0f, y, new Vector2(760f, 100f), FontStyle.Bold);
             var outline = title.gameObject.AddComponent<Outline>();
             outline.effectColor = new Color(0.08f, 0.025f, 0.12f, 0.9f);
             outline.effectDistance = new Vector2(1.2f, -1.2f);
-            AddLabel(parent, "A  R  C  A  N  E     D  I  S  C", 16, new Color(Gold.r, Gold.g, Gold.b, 0.92f),
+            AddLabel(parent, "A  R  C  A  N  E     P  U  C  K", 16, new Color(Gold.r, Gold.g, Gold.b, 0.92f),
                 0f, y - 62f, new Vector2(680f, 30f));
             AddDivider(parent, y - 94f, 320f, new Color(Gold.r, Gold.g, Gold.b, 0.72f));
         }
